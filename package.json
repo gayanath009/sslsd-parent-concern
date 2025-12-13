@@ -1,6 +1,6 @@
 {
   "name": "sslsd-parent-concern",
-  "homepage": "https://github.com/gayanath009/sslsd-parent-concern",
+  "homepage": "https://gayanath009.github.io/sslsd-parent-concern/",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,7 +9,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "pre-deploy": "npm run build",
+    "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
