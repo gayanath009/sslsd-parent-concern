@@ -1,0 +1,272 @@
+/* Complaints Form Styles */
+
+.complaints-container {
+    min-height: 100vh;
+    background: #407ba7;
+}
+
+.bg-gradient {
+    background: #003559 !important;
+}
+
+.navbar {
+    box-shadow: #887766;
+}
+
+.back-btn,
+.view-btn {
+    border-radius: 5px;
+    padding: 8px 20px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.back-btn:hover,
+.view-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+}
+
+/* Header Card */
+.header-card {
+    border: none;
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.98);
+    transition: all 0.3s ease;
+}
+
+.header-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15) !important;
+}
+
+.header-card .card-title {
+    color: #333;
+    font-weight: 700;
+    font-size: 2rem;
+}
+
+.header-card .card-text {
+    color: #666;
+    font-size: 1.05rem;
+    line-height: 1.6;
+}
+
+/* Form Card */
+.form-card {
+    border: none;
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.98);
+    transition: all 0.3s ease;
+}
+
+.form-card:hover {
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Form Elements */
+.form-label {
+    color: #333;
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+}
+
+.form-control,
+.form-select {
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.form-control:disabled {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    cursor: not-allowed;
+}
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 150px;
+}
+
+.form-text {
+    color: #999;
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+}
+
+/* Custom Checkbox */
+.custom-checkbox {
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.custom-checkbox:hover {
+    background: #e9ecef;
+}
+
+.form-check-input {
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 2px solid #667eea;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.form-check-input:checked {
+    background-color: #667eea;
+    border-color: #667eea;
+}
+
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.form-check-label {
+    margin-left: 0.5rem;
+    cursor: pointer;
+    color: #333;
+}
+
+/* Buttons */
+.cancel-btn,
+.submit-btn {
+    border-radius: 5px;
+    padding: 12px 32px;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.cancel-btn {
+    background: #6c757d;
+    color: white;
+}
+
+.cancel-btn:hover:not(:disabled) {
+    background: #5a6268;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+}
+
+.submit-btn {
+    background: #012a4a;
+    color: white;
+}
+
+.submit-btn:hover:not(:disabled) {
+    background: #1e6091;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.submit-btn:disabled,
+.cancel-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Loading Spinner */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.15em;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .header-card .card-title {
+        font-size: 1.5rem;
+    }
+
+    .header-card .card-text {
+        font-size: 0.95rem;
+    }
+
+    .form-card .card-body {
+        padding: 2rem !important;
+    }
+
+    .cancel-btn,
+    .submit-btn {
+        padding: 10px 24px;
+        font-size: 0.9rem;
+    }
+
+    .navbar .d-flex {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .back-btn,
+    .view-btn {
+        width: 100%;
+        font-size: 0.85rem;
+        padding: 6px 16px;
+    }
+}
+
+@media (max-width: 576px) {
+    .complaints-container .container {
+        padding: 1rem;
+    }
+
+    .header-card .card-title {
+        font-size: 1.3rem;
+    }
+
+    .form-card .card-body {
+        padding: 1.5rem !important;
+    }
+
+    .d-flex.gap-3 {
+        flex-direction: column;
+        gap: 0.75rem !important;
+    }
+
+    .cancel-btn,
+    .submit-btn {
+        width: 100%;
+    }
+}
+
+/* Animation for form submission */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.submit-btn:active:not(:disabled) {
+    animation: pulse 0.3s ease;
+}
+
+/* Focus visible for accessibility */
+.form-control:focus-visible,
+.form-select:focus-visible,
+.form-check-input:focus-visible {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}

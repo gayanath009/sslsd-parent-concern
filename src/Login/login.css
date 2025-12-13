@@ -1,0 +1,179 @@
+/* Login Page Custom Styles */
+
+.login_page {
+    min-height: 100vh;
+    background: #407ba7;
+    display: flex;
+    flex-direction: column;
+    /* align-items: center; Remove to let navbar stretch */
+    /* justify-content: center; Move centering to content wrapper */
+    position: relative;
+    /* padding: 2rem; Remove padding from main container */
+}
+
+.bg-gradient {
+    background: #003559 !important;
+}
+
+.navbar {
+    box-shadow: #006daa;
+}
+
+.login-content-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 2rem;
+}
+
+.getbackhome {
+    position: absolute;
+    top: 30px;
+    left: 30px;
+    color: white;
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.getbackhome:hover {
+    color: rgba(255, 255, 255, 0.8);
+    transform: translateX(-5px);
+}
+
+.login-content {
+    text-align: center;
+    max-width: 500px;
+    width: 100%;
+}
+
+.letsgetstarted {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 3rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 1.5rem;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.letsgetstarted_desc {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 3rem;
+    line-height: 1.6;
+}
+
+.login_button {
+    background: white;
+    border: none;
+    border-radius: 50px;
+    padding: 14px 40px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+}
+
+.login_button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    background: #f8f9fa;
+}
+
+.login_button:active {
+    transform: translateY(0);
+}
+
+.google_icon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+
+.bar {
+    color: #ddd;
+    font-size: 1.5rem;
+    font-weight: 300;
+    margin: 0 8px;
+}
+
+.signin_text {
+    color: #333;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.terms_link,
+.privacypolicy_link {
+    color: white;
+    text-decoration: underline;
+    transition: all 0.3s ease;
+}
+
+.terms_link:hover,
+.privacypolicy_link:hover {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .letsgetstarted {
+        font-size: 2rem;
+    }
+
+    .letsgetstarted_desc {
+        font-size: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .login_button {
+        padding: 12px 32px;
+        font-size: 0.95rem;
+    }
+
+    .getbackhome {
+        font-size: 1rem;
+        top: 20px;
+        left: 20px;
+    }
+}
+
+@media (max-width: 576px) {
+    .login_page {
+        padding: 1rem;
+    }
+
+    .letsgetstarted {
+        font-size: 1.5rem;
+    }
+
+    .letsgetstarted_desc {
+        font-size: 0.9rem;
+    }
+
+    .login_button {
+        padding: 10px 24px;
+        font-size: 0.9rem;
+    }
+
+    .google_icon {
+        width: 20px;
+        height: 20px;
+    }
+
+    .bar {
+        font-size: 1.2rem;
+    }
+}

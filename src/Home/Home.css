@@ -1,0 +1,96 @@
+/* Home Page Custom Styles */
+
+.home-container {
+    min-height: 100vh;
+    background: #407ba7;
+    display: flex;
+    align-items: center;
+}
+
+.home-container .card {
+    border: none;
+    border-radius: 15px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.home-container .card:hover {
+    transform: translateY(-5px);
+}
+
+.home-container .card-title {
+    color: #333;
+    font-weight: 700;
+    font-size: 2rem;
+}
+
+.home-container .card-text {
+    color: #666;
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.home-container .btn-primary {
+    background: linear-gradient(135deg, #344386 0%, #344386 100%);
+    border: none;
+    border-radius: 90px;
+    padding: 12px 40px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.home-container .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 2, );
+    background: linear-gradient(135deg, #344386 0%, #344386 100%);
+}
+
+.feature-card {
+    border: none;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.feature-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.feature-card .card-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #667eea;
+    margin-bottom: 1rem;
+}
+
+.feature-card .card-text {
+    color: #555;
+    font-size: 0.95rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .home-container .card-title {
+        font-size: 1.5rem;
+    }
+
+    .home-container .card-text {
+        font-size: 1rem;
+    }
+
+    .home-container .btn-primary {
+        padding: 10px 30px;
+        font-size: 0.95rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .home-container {
+        padding: 1rem;
+    }
+
+    .home-container .card-title {
+        font-size: 1.3rem;
+    }
+}

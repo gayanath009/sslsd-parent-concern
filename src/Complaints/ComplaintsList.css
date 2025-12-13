@@ -1,0 +1,422 @@
+/* Complaints List Styles */
+
+.complaints-list-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.bg-gradient {
+    background: #003559 !important;
+}
+
+.bg-history {
+    background: #003559 !important;
+    color: white;
+    height: 50px;
+    border-radius: 5px;
+    padding: 10px;
+}
+
+
+.navbar {
+    box-shadow: #1b4965;
+}
+
+.back-btn,
+.new-btn {
+    border-radius: 50px;
+    padding: 8px 20px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.back-btn:hover,
+.new-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+}
+
+/* Welcome Section */
+.welcome-section {
+    background: white;
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.welcome-section h2 {
+    color: #333;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.welcome-section p {
+    margin-bottom: 0;
+    font-size: 1.05rem;
+}
+
+/* Statistics Cards */
+.stat-card {
+    background: white;
+    border-radius: 15px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border-left: 5px solid;
+    cursor: default;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.stat-total {
+    border-left-color: #6c757d;
+}
+
+.stat-new {
+    border-left-color: #17a2b8;
+}
+
+.stat-progress {
+    border-left-color: #ffc107;
+}
+
+.stat-resolved {
+    border-left-color: #28a745;
+}
+
+.stat-icon {
+    font-size: 3rem;
+    line-height: 1;
+}
+
+.stat-details h3 {
+    margin: 0;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #333;
+}
+
+.stat-details p {
+    margin: 0;
+    color: #666;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Filter Card */
+.filter-card {
+    background: white;
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.btn-group .btn {
+    border-radius: 50px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    padding: 0.5rem 1.5rem;
+}
+
+.btn-group .btn:hover {
+    transform: translateY(-2px);
+}
+
+/* Complaints Grid */
+.complaints-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.complaint-card {
+    background: white;
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border-left: 5px solid #6c757d;
+}
+
+.complaint-card:hover {
+    transform: translateX(5px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.complaint-card.selected {
+    border-left-color: #f5576c;
+    background: linear-gradient(to right, #fff5f7 0%, white 100%);
+    box-shadow: 0 8px 25px rgba(245, 87, 108, 0.2);
+}
+
+.complaint-title {
+    color: #333;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    font-size: 1.15rem;
+}
+
+.complaint-date {
+    color: #999;
+    font-size: 0.85rem;
+    margin-bottom: 0;
+}
+
+.complaint-preview {
+    color: #555;
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+}
+
+.payment-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%);
+    color: white;
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* Badge Styles */
+.badge {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+.badge-urgent {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+}
+
+.badge-high {
+    background: linear-gradient(135deg, #fd7e14 0%, #e8590c 100%);
+    color: white;
+}
+
+.badge-medium {
+    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+    color: #333;
+}
+
+.badge-low {
+    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+    color: white;
+}
+
+.badge-new {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    color: white;
+}
+
+.badge-progress {
+    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+    color: #333;
+}
+
+.badge-resolved {
+    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+    color: white;
+}
+
+.badge-default {
+    background: #6c757d;
+    color: white;
+}
+
+/* Empty State */
+.empty-state {
+    background: white;
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.empty-icon {
+    font-size: 5rem;
+    margin-bottom: 1rem;
+}
+
+.empty-state h4 {
+    color: #333;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state .btn {
+    border-radius: 50px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+}
+
+/* Detail Panel */
+.detail-panel {
+    background: white;
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    top: 1rem;
+}
+
+.detail-panel .card-header {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    border-radius: 12px 12px 0 0 !important;
+    padding: 1.25rem;
+    position: relative;
+}
+
+.detail-section {
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.detail-section:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.detail-label {
+    font-weight: 700;
+    color: #666;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.detail-text {
+    color: #333;
+    line-height: 1.6;
+    margin-bottom: 0;
+}
+
+/* Alert Customization */
+.alert {
+    border-radius: 10px;
+    border: none;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    color: #0c5460;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+}
+
+/* Sticky positioning */
+.sticky-top {
+    position: sticky;
+    top: 1rem;
+    z-index: 100;
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
+    .sticky-top {
+        position: relative;
+        top: 0;
+        margin-top: 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .welcome-section {
+        padding: 1.5rem;
+    }
+
+    .welcome-section h2 {
+        font-size: 1.5rem;
+    }
+
+    .stat-card {
+        padding: 1rem;
+        gap: 1rem;
+    }
+
+    .stat-icon {
+        font-size: 2rem;
+    }
+
+    .stat-details h3 {
+        font-size: 1.8rem;
+    }
+
+    .btn-group {
+        width: 100%;
+    }
+
+    .btn-group .btn {
+        flex: 1;
+        min-width: 120px;
+    }
+
+    .complaint-card {
+        border-left: none;
+        border-top: 5px solid #6c757d;
+    }
+
+    .complaint-card.selected {
+        border-top-color: #f5576c;
+    }
+
+    .complaint-card:hover {
+        transform: translateY(-5px);
+        transform: translateX(0);
+    }
+
+    .navbar .d-flex {
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
+    }
+
+    .back-btn,
+    .new-btn {
+        width: 100%;
+        font-size: 0.85rem;
+        padding: 6px 16px;
+    }
+}
+
+@media (max-width: 576px) {
+    .complaints-list-container .container-fluid {
+        padding: 1rem;
+    }
+
+    .stat-details h3 {
+        font-size: 1.5rem;
+    }
+
+    .complaint-title {
+        font-size: 1rem;
+    }
+
+    .empty-icon {
+        font-size: 3rem;
+    }
+
+    .detail-panel .card-header h5 {
+        font-size: 1rem;
+    }
+}

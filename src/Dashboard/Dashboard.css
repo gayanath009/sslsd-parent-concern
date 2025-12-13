@@ -1,0 +1,201 @@
+/* Dashboard Custom Styles */
+
+.dashboard-container {
+    min-height: 100vh;
+    background: #407ba7;
+}
+
+.bg-gradient {
+    background: #003559 !important;
+}
+
+.navbar {
+    box-shadow: #006daa;
+}
+
+.logout-btn {
+    border-radius: 5px;
+    padding: 8px 24px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+}
+
+.welcome-card {
+    border: none;
+    border-radius: 15px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    background: rgba(255, 255, 255, 0.98);
+}
+
+.welcome-card:hover {
+    transform: translateY(-5px);
+}
+
+.welcome-card .card-title {
+    color: #333;
+    font-weight: 700;
+    font-size: 2.5rem;
+}
+
+.welcome-card .card-text {
+    color: #666;
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.info-card {
+    border: none;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.95);
+    height: 100%;
+}
+
+.info-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
+}
+
+.info-card .card-subtitle {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-card .card-text {
+    color: #344386;
+}
+
+.concern-btn {
+    background: #012a4a;
+    border: none;
+    border-radius: 5px;
+    /* Standard button radius */
+    padding: 14px 48px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(2, 12, 91, 0.4);
+}
+
+.concern-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(2, 12, 91, 0.6);
+    background: #1e6091;
+
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .welcome-card .card-title {
+        font-size: 1.8rem;
+    }
+
+    .welcome-card .card-text {
+        font-size: 1rem;
+    }
+
+    .concern-btn {
+        padding: 12px 36px;
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .dashboard-container .container {
+        padding: 1rem;
+    }
+
+    .welcome-card .card-title {
+        font-size: 1.5rem;
+    }
+
+    .welcome-card .card-body {
+        padding: 2rem !important;
+    }
+}
+
+/* Modal Styles */
+.modal-backdrop-custom {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1050;
+    backdrop-filter: blur(2px);
+}
+
+.modal-content-custom {
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header-custom {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-title {
+    margin: 0;
+    font-weight: 600;
+    color: #344386;
+}
+
+.modal-body-custom {
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+.modal-footer-custom {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #eee;
+    text-align: right;
+}
+
+/* List Item Styles */
+.list-group-item {
+    border-left: none;
+    border-right: none;
+    transition: background-color 0.2s;
+    cursor: pointer;
+}
+
+.list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+.list-group-item:first-child {
+    border-top: none;
+}
