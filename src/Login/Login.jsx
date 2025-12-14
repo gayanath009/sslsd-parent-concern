@@ -27,8 +27,8 @@ function Login() {
       provider: 'google',
       options: {
         // Dynamically build the redirect URL based on the current origin and base path
-        //redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}dashboard`,
-        redirectTo: window.location.origin + '/sslsd-parent-concern/dashboard',
+        redirectTo: window.location.origin + '/dashboard', // ✅ force Google to show account picker
+
         queryParams: {
           prompt: 'select_account', // ✅ force Google to show account picker
           response_mode: 'query',
