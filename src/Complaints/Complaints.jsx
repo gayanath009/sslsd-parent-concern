@@ -105,6 +105,10 @@ function Complaints() {
         navigate('/dashboard');
     };
 
+    const homeBack = () => {
+        navigate('/');
+    };
+
     const handleViewComplaints = () => {
         navigate('/complaints-list');
     };
@@ -124,7 +128,11 @@ function Complaints() {
                             <button onClick={handleBack} className='btn btn-outline-light back-btn'>
                                 Back to Dashboard
                             </button>
-                        )}
+                        )}  {
+                            isAnonymous && <button onClick={homeBack} className='btn btn-outline-light back-btn'>
+                                Back to Home
+                            </button>
+                        }
 
                     </div>
                 </div>
