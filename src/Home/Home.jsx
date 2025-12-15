@@ -28,15 +28,13 @@ function Home() {
                   <button className="btn btn-primary btn-lg px-5" onClick={taketoSignIn}>
                     Sign In with Google
                   </button>
-                  &nbsp;&nbsp;
-
-
+                </div>
+                <div>&nbsp;</div>
+                <div className="text-center">
                   <button className="btn btn-primary btn-lg px-5" onClick={handleAnonymousClick}>
                     Submit Anonymously
                   </button>
                 </div>
-
-
 
               </div>
             </div>
