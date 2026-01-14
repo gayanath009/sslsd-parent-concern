@@ -3,9 +3,9 @@ import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../SupabaseClient';
 import { useUser } from '../context/UserContext';
-import './PrincipalDashboard.css';
+import './BoardMemberDashboard.css';
 
-function PrincipalDashboard() {
+function BoardMemberDashboard() {
     const navigate = useNavigate();
     const { email, name, userId, setEmail, setName, setRole, setUserId } = useUser();
     const [complaints, setComplaints] = useState([]);
@@ -14,19 +14,15 @@ function PrincipalDashboard() {
     const [priorityFilter, setPriorityFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedComplaint, setSelectedComplaint] = useState(null);
-    const [responseText, setResponseText] = useState('');
-    const [showResponseModal, setShowResponseModal] = useState(false);
     const [showReadMoreModal, setShowReadMoreModal] = useState(false);
     const [showCommentsModal, setShowCommentsModal] = useState(false);
     const [comments, setComments] = useState([]);
     const [loadingComments, setLoadingComments] = useState(false);
     const [stats, setStats] = useState({
-        //total: 0,
         new: 0,
         responded: 0,
         open: 0,
         closed: 0,
-        //urgent: 0
     });
 
     const handleLogout = async () => {
@@ -45,7 +41,6 @@ function PrincipalDashboard() {
     const fetchComplaints = async () => {
         setLoading(true);
         try {
-            // Fetch complaints without foreign key relationship
             const { data, error } = await supabase
                 .from('complaint')
                 .select('*')
@@ -57,7 +52,6 @@ function PrincipalDashboard() {
                 return;
             }
 
-            // Fetch user data for each complaint
             const complaintsWithUsers = await Promise.all(
                 (data || []).map(async (complaint) => {
                     if (complaint.user_id) {
@@ -86,73 +80,12 @@ function PrincipalDashboard() {
 
     const calculateStats = (data) => {
         const stats = {
-            //total: data.length,
             new: data.filter(c => c.stat_code === 3).length,
             responded: data.filter(c => c.stat_code === 2).length,
             open: data.filter(c => c.stat_code === 4 || c.stat_code === 6).length,
             closed: data.filter(c => c.stat_code === 5).length
-
         };
         setStats(stats);
-    };
-
-    const handleRespond = (complaint) => {
-        setSelectedComplaint(complaint);
-        setResponseText('');
-        setShowResponseModal(true);
-    };
-
-    const submitResponse = async (action) => {
-        if (!responseText.trim()) {
-            alert('Please enter a comment');
-            return;
-        }
-
-        try {
-            // Insert comment
-            const { error: commentError } = await supabase
-                .from('comment')
-                .insert({
-                    complaint_id: selectedComplaint.complaint_id,
-                    user_id: userId,
-                    comment_text: responseText,
-                    visible_to: 'parent',
-                    created_at: new Date().toISOString()
-                });
-
-            if (commentError) {
-                console.error('Error adding comment:', commentError);
-                alert('❌ Failed to add comment');
-                return;
-            }
-
-            // Update status
-            // const newStatus = action === 'keep_open' ? 'open' : 'closed';
-            // const { error: updateError } = await supabase
-            //     .from('complaint')
-            //     .update({ status: newStatus })
-            //     .eq('complaint_id', selectedComplaint.complaint_id);
-
-
-            const { error: updateError } = await supabase
-                .rpc('update_complaint_status', {
-                    p_complaint_id: selectedComplaint.complaint_id,
-                    p_stat_code: action
-                });
-            if (updateError) {
-                console.error('Error updating status:', updateError);
-                alert('❌ Failed to update status');
-            } else {
-                alert(`✅ Complaint ${action === '4' ? 'kept open' : 'closed'} successfully`);
-                setShowResponseModal(false);
-                setResponseText('');
-                setSelectedComplaint(null);
-                fetchComplaints();
-            }
-        } catch (error) {
-            console.error('Unexpected error:', error);
-            alert('❌ An unexpected error occurred');
-        }
     };
 
     const handleViewComments = async (complaint) => {
@@ -179,8 +112,6 @@ function PrincipalDashboard() {
             setLoadingComments(false);
         }
     };
-
-
 
     const filteredComplaints = complaints.filter(complaint => {
         const matchesFilter = filter === 'all' ? true :
@@ -279,7 +210,7 @@ function PrincipalDashboard() {
             case 2:
                 return <span className="badge" style={{ backgroundColor: '#75B06F' }}>Responded by Parent Representative</span>;
             case 3:
-                return <span className="badge" style={{ backgroundColor: '#C47BE4' }}>New</span>;
+                return <span className="badge" style={{ backgroundColor: '#C47BE4' }}>With Principal</span>;
             case 4:
             case 6:
                 return <span className="badge" style={{ backgroundColor: '#E5BA41' }}>Open</span>;
@@ -289,8 +220,6 @@ function PrincipalDashboard() {
                 return null;
         }
     };
-
-
 
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString('en-US', {
@@ -313,11 +242,11 @@ function PrincipalDashboard() {
     }
 
     return (
-        <div className='principal-dashboard-container'>
+        <div className='board-member-dashboard-container'>
             {/* Navigation Bar */}
             <nav className="navbar navbar-expand-lg navbar-dark bg-gradient">
                 <div className="container-fluid">
-                    <span className="navbar-brand mb-0 h1">👩‍🏫 Principal Dashboard</span>
+                    <span className="navbar-brand mb-0 h1">👥 Board Member Dashboard</span>
                     <div className="d-flex align-items-center gap-3">
                         <span className="text-white">Welcome, {name}</span>
                         <button onClick={handleLogout} className='btn btn-outline-light logout-btn'>
@@ -336,7 +265,7 @@ function PrincipalDashboard() {
                             <div className="stat-icon">🆕</div>
                             <div className="stat-details">
                                 <h3>{stats.new}</h3>
-                                <p>New</p>
+                                <p>With Principal</p>
                             </div>
                         </div>
                     </div>
@@ -382,7 +311,7 @@ function PrincipalDashboard() {
                                         className={`btn w-100 ${filter === 3 ? 'btn-primary' : 'btn-outline-primary'}`}
                                         onClick={() => setFilter(3)}
                                     >
-                                        New
+                                        With Principal
                                     </button>
 
                                     <button
@@ -483,15 +412,6 @@ function PrincipalDashboard() {
                                         </div>
                                         <div className="col-lg-2">
                                             <div className="action-buttons">
-                                                {(complaint.stat_code === 3 || complaint.stat_code === 4 || complaint.stat_code === 6) && (
-                                                    <button
-                                                        className="btn btn-sm btn-primary w-100 mb-2"
-                                                        onClick={() => handleRespond(complaint)}
-                                                    >
-                                                        Respond
-                                                    </button>
-                                                )}
-
                                                 {(complaint.stat_code === 2 || complaint.stat_code === 4 || complaint.stat_code === 5 || complaint.stat_code === 6) && (
                                                     <button
                                                         className={`btn btn-sm w-100 mb-2 text-white`}
@@ -501,8 +421,6 @@ function PrincipalDashboard() {
                                                         View Response
                                                     </button>
                                                 )}
-
-
                                             </div>
                                         </div>
                                     </div>
@@ -512,53 +430,6 @@ function PrincipalDashboard() {
                     )}
                 </div>
             </div>
-
-            {/* Response Modal */}
-            {showResponseModal && selectedComplaint && (
-                <div className="modal-overlay" onClick={() => setShowResponseModal(false)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h5 style={{ color: 'white' }}>Respond to Complaint</h5>
-                            <button
-                                className="btn-close"
-                                onClick={() => setShowResponseModal(false)}
-                            >X</button>
-                        </div>
-                        <div className="modal-body">
-                            <div className="mb-3">
-                                <label className="form-label fw-bold">Complaint: {selectedComplaint.title}</label>
-                            </div>
-                            <div className="mb-3">
-                                <label htmlFor="responseText" className="form-label fw-bold">
-                                    Comment <span className="text-danger">*</span>
-                                </label>
-                                <textarea
-                                    id="responseText"
-                                    className="form-control"
-                                    rows="5"
-                                    placeholder="Enter your comment..."
-                                    value={responseText}
-                                    onChange={(e) => setResponseText(e.target.value)}
-                                ></textarea>
-                            </div>
-                        </div>
-                        <div className="modal-footer">
-                            <button
-                                className="btn btn-warning"
-                                onClick={() => submitResponse('4')} // Keep Open
-                            >
-                                Keep Open
-                            </button>
-                            <button
-                                className="btn btn-success"
-                                onClick={() => submitResponse('5')} // Close
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Read More Modal */}
             {showReadMoreModal && selectedComplaint && (
@@ -689,4 +560,4 @@ function PrincipalDashboard() {
     );
 }
 
-export default PrincipalDashboard;
+export default BoardMemberDashboard;

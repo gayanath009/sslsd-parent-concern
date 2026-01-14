@@ -4,11 +4,13 @@ import { supabase } from '../../SupabaseClient';
 import { useUser } from '../context/UserContext';
 import RepresentativeDashboard from './RepresentativeDashboard';
 import PrincipalDashboard from './PrincipalDashboard';
+import AdminDashboard from './AdminDashboard';
+import BoardMemberDashboard from './BoardMemberDashboard';
 import './Dashboard.css';
 
 function Dashboard() {
   const navigate = useNavigate();
-  const { email, name, setEmail, setName, role, setRole, setUserId } = useUser();
+  const { email, name, setEmail, setName, role, setRole, userId, setUserId } = useUser();
   const [loading, setLoading] = useState(true);
 
   // Moved Logic (Complaints) to top level
@@ -16,6 +18,10 @@ function Dashboard() {
   const [comments, setComments] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [loadingComments, setLoadingComments] = useState(false);
+  const [selectedComplaint, setSelectedComplaint] = useState(null);
+  const [showReadMoreModal, setShowReadMoreModal] = useState(false);
+  const [showResponseBackModal, setShowResponseBackModal] = useState(false);
+  const [responseBackText, setResponseBackText] = useState('');
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -51,7 +57,7 @@ function Dashboard() {
 
         // ---- Check if record exists ----
         const { data: existingRecord } = await supabase
-          .from('user')
+          .from('appusers')
           .select('user_id, role')
           .eq('email', email)
           .maybeSingle();
@@ -59,7 +65,7 @@ function Dashboard() {
         if (!existingRecord) {
           // Insert new user with default role 'parent'
           const { data: newUser, error: insertError } = await supabase
-            .from('user')
+            .from('appusers')
             .insert({
               name: userName,
               email: email,
@@ -79,7 +85,7 @@ function Dashboard() {
             setUserId(newUser?.user_id || null);
           }
         } else {
-          console.log('Record already exists');
+          //console.log('Record already exists');
           setRole(existingRecord.role || 'parent');
           setUserId(existingRecord.user_id || null);
         }
@@ -95,16 +101,11 @@ function Dashboard() {
 
   useEffect(() => {
     const getComplaints = async () => {
-      if (!email || role !== 'parent') return; // Only fetch for parents
-
-      // First get the user_id if not already in context/state, 
-      // but we are already doing that in the main useEffect.
-      // Let's rely on the result of the main logic or just query by email if the schema supports it.
-      // Safer to query by the user_id we found.
+      if (!email || role !== 'parent') return; // fetch for parents
 
       try {
         const { data: userData, error: userError } = await supabase
-          .from('user')
+          .from('appusers')
           .select('user_id')
           .eq('email', email)
           .single();
@@ -113,13 +114,14 @@ function Dashboard() {
 
         const { data, error } = await supabase
           .from('complaint')
-          .select('*')
+          .select('*, status_typ(display, color)')
           .eq('user_id', userData.user_id)
           .order('created_at', { ascending: false });
 
         if (error) {
-          console.error('Error fetching complaints:', error);
+          console.error('❌ Error fetching complaints:', error);
         } else {
+          console.log('complaints', data);
           setComplaints(data || []);
         }
       } catch (err) {
@@ -142,12 +144,20 @@ function Dashboard() {
   }
 
   // Render role-specific dashboard
+  if (role === 'admin') {
+    return <AdminDashboard />;
+  }
+
   if (role === 'representative') {
     return <RepresentativeDashboard />;
   }
 
   if (role === 'principal') {
     return <PrincipalDashboard />;
+  }
+
+  if (role === 'board_member') {
+    return <BoardMemberDashboard />;
   }
 
   // Default: Parent Dashboard
@@ -160,9 +170,11 @@ function Dashboard() {
     try {
       const { data, error } = await supabase
         .from('comment') // stored in 'comment' table based on request
-        .select('*')
+        .select('*, appusers(name)')
         .eq('complaint_id', complaintId)
         .order('created_at', { ascending: true });
+
+      console.log('comments', data);
 
       if (error) {
         console.error('Error fetching comments:', error);
@@ -175,6 +187,79 @@ function Dashboard() {
       setLoadingComments(false);
     }
   };
+
+  const submitResponseBack = async () => {
+    if (!responseBackText.trim()) {
+      alert('Please enter a comment');
+      return;
+    }
+
+    try {
+      // 1. Insert comment
+      const { error: commentError } = await supabase
+        .from('comment')
+        .insert({
+          complaint_id: selectedComplaint.complaint_id,
+          user_id: userId,
+          comment_text: responseBackText,
+          visible_to: 'principal',
+          created_at: new Date().toISOString()
+        });
+
+      if (commentError) {
+        console.error('Error adding response:', commentError);
+        alert('❌ Failed to send response');
+        return;
+      }
+
+      // 2. Update status to 6 using RPC
+      const { error: updateError } = await supabase
+        .rpc('update_complaint_status', {
+          p_complaint_id: selectedComplaint.complaint_id,
+          p_stat_code: 6
+        });
+
+      if (updateError) {
+        console.error('Error updating status via RPC:', updateError);
+
+        // Fallback: Try direct update
+        const { error: directUpdateError } = await supabase
+          .from('complaint')
+          .update({ stat_code: 6 })
+          .eq('complaint_id', selectedComplaint.complaint_id);
+
+        if (directUpdateError) {
+          console.error('Error updating status directly:', directUpdateError);
+          alert('✅ Response saved, but failed to update status');
+        } else {
+          alert('Response sent successfully');
+          setShowResponseBackModal(false);
+          setResponseBackText('');
+          window.location.reload(); // Refresh to show new status
+        }
+      } else {
+        alert('✅ Response sent successfully');
+        setShowResponseBackModal(false);
+        setResponseBackText('');
+        window.location.reload(); // Refresh to show new status
+      }
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      alert('❌ An unexpected error occurred');
+    }
+  };
+
+  const getPriorityBadgeClass = (priority) => {
+    switch (priority) {
+      case 'urgent': return 'badge-urgent';
+      case 'high': return 'badge-high';
+      case 'medium': return 'badge-medium';
+      case 'low': return 'badge-low';
+      default: return 'badge-default';
+    }
+  };
+
+
 
   return (
     <div className='dashboard-container'>
@@ -232,26 +317,62 @@ function Dashboard() {
             {/* Complaints List Section */}
             <div className="card shadow-sm">
               <div className="bg-history">
-                <h5 className="mb-0">My Concern History</h5>
+                <h5 className="mb-0">My Communication History</h5>
               </div>
               <div className="list-group list-group-flush">
                 {complaints.length > 0 ? (
                   complaints.map((complaint) => (
-                    <button
+                    <div
                       key={complaint.complaint_id}
                       className="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
                       onClick={() => handleComplaintClick(complaint.complaint_id)}
+                      style={{ cursor: 'pointer' }}
                     >
                       <div>
-                        <div className="fw-bold">{complaint.title}</div>
                         <small className="text-muted">{new Date(complaint.created_at).toLocaleDateString()}</small>
+                        <div className="fw-bold">{complaint.title}</div>
+                        <small className="text-muted">
+                          {complaint.description.length > 100
+                            ? complaint.description.substring(0, 100) + '...'
+                            : complaint.description}
+                          {complaint.description.length > 100 && (
+                            <span
+                              className="text-primary ms-2"
+                              style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedComplaint(complaint);
+                                setShowReadMoreModal(true);
+                              }}
+                            >
+                              More
+                            </span>
+                          )}
+                        </small>
+
                       </div>
-                      <span className={`badge rounded-pill ${complaint.status === 'open' ? 'bg-success' :
-                        complaint.status === 'closed' ? 'bg-secondary' : 'bg-primary'
-                        }`}>
-                        {complaint.status}
-                      </span>
-                    </button>
+
+                      <div className="d-flex align-items-center gap-2">
+                        {complaint.stat_code === 4 && (
+                          <button
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedComplaint(complaint);
+                              setShowResponseBackModal(true);
+                            }}
+                          >
+                            Response back
+                          </button>
+                        )}
+                        <span
+                          className="badge rounded-pill"
+                          style={{ backgroundColor: complaint.status_typ?.color || '#6c757d' }}
+                        >
+                          {complaint.status_typ?.display}
+                        </span>
+                      </div>
+                    </div>
                   ))
                 ) : (
                   <div className="p-4 text-center text-muted">
@@ -266,43 +387,168 @@ function Dashboard() {
       </div>
 
       {/* Comments Modal */}
-      {
-        showModal && (
-          <div className="modal-backdrop-custom">
-            <div className="modal-content-custom">
-              <div className="modal-header-custom">
-                <h5 className="modal-title">Replies</h5>
-                <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
-              </div>
-              <div className="modal-body-custom">
-                {loadingComments ? (
-                  <div className="text-center p-3">
-                    <div className="spinner-border text-primary spinner-border-sm" role="status">
-                      <span className="visually-hidden">Loading...</span>
-                    </div>
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h5 style={{ color: 'white' }}>Responses</h5>
+              <button
+                className="btn-close"
+                onClick={() => setShowModal(false)}
+              >X</button>
+            </div>
+            <div className="modal-body">
+              {loadingComments ? (
+                <div className="text-center p-3">
+                  <div className="spinner-border text-primary spinner-border-sm" role="status">
+                    <span className="visually-hidden">Loading...</span>
                   </div>
-                ) : comments.length > 0 ? (
-                  <ul className="list-group list-group-flush">
-                    {comments.map((comment) => (
-                      <li key={comment.comment_id} className="list-group-item">
-                        <p className="mb-1">{comment.comment_text}</p>
+                </div>
+              ) : comments.length > 0 ? (
+                <ul className="list-group list-group-flush">
+                  {comments.map((comment) => (
+                    <li key={comment.comment_id} className="list-group-item">
+                      <div className="d-flex justify-content-between">
+                        <strong className="mb-1">{comment.appusers?.name || 'Unknown'}</strong>
                         <small className="text-muted">
                           {new Date(comment.created_at).toLocaleString()}
                         </small>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-muted text-center my-3">No replies yet.</p>
-                )}
-              </div>
-              <div className="modal-footer-custom">
-                <button className="btn btn-secondary btn-sm" onClick={() => setShowModal(false)}>Close</button>
-              </div>
+                      </div>
+                      {/* <p className="mb-1">{comment.comment_text}</p> */}
+
+                      <div className="mb-3">
+
+                        <div
+                          className="p-3 border rounded bg-light"
+                          style={{ maxHeight: '300px', overflowY: 'auto' }}
+                        >
+                          {comment.comment_text}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted text-center my-3">No responses yet.</p>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Close</button>
             </div>
           </div>
-        )
-      }
+        </div>
+      )}
+
+      {/* Read More Modal */}
+      {showReadMoreModal && selectedComplaint && (
+        <div className="modal-overlay" onClick={() => setShowReadMoreModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h5 style={{ color: 'white' }}>Concern Details</h5>
+              <button
+                className="btn-close"
+                onClick={() => setShowReadMoreModal(false)}
+              >X</button>
+            </div>
+            <div className="modal-body">
+
+              <div className="mb-3">
+                <label className="form-label fw-bold">Type:</label>
+                <p className="form-control-static">{selectedComplaint.type}</p>
+              </div>
+              <div className="mb-3">
+                <label className="form-label fw-bold">Student Name:</label>
+                <p className="form-control-static">{selectedComplaint.student_name}</p>
+              </div>
+              <div className="mb-3">
+                <label className="form-label fw-bold">Student Number:</label>
+                <p className="form-control-static">{selectedComplaint.student_no}</p>
+              </div>
+              <div className="mb-3">
+                <label className="form-label fw-bold">Priority:</label>
+                <p className="form-control-static">
+                  {selectedComplaint.priority ? (
+                    <span className={`badge ${getPriorityBadgeClass(selectedComplaint.priority)}`}>
+                      {selectedComplaint.priority.toUpperCase()}
+                    </span>
+                  ) : 'N/A'}
+                </p>
+              </div>
+              <div className="mb-3">
+                <label className="form-label fw-bold">Title:</label>
+                <p className="form-control-static">{selectedComplaint.title}</p>
+              </div>
+              <div className="mb-3">
+                <label className="form-label fw-bold">Description:</label>
+                <div
+                  className="p-3 border rounded bg-light"
+                  style={{ maxHeight: '300px', overflowY: 'auto' }}
+                >
+                  {selectedComplaint.description}
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowReadMoreModal(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Response Back to School Modal */}
+      {showResponseBackModal && selectedComplaint && (
+        <div className="modal-overlay" onClick={() => setShowResponseBackModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h5 style={{ color: 'white' }}>Response to School</h5>
+              <button
+                className="btn-close"
+                onClick={() => setShowResponseBackModal(false)}
+              >X</button>
+            </div>
+            <div className="modal-body">
+              <div className="mb-3">
+                <label className="form-label fw-bold">Concern: {selectedComplaint.title}</label>
+              </div>
+              <div className="mb-3">
+                <label htmlFor="responseBackText" className="form-label fw-bold">
+                  Message <span className="text-danger">*</span>
+                </label>
+                <textarea
+                  id="responseBackText"
+                  className="form-control"
+                  rows="5"
+                  placeholder="Type your response..."
+                  value={responseBackText}
+                  onChange={(e) => setResponseBackText(e.target.value)}
+                ></textarea>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setShowResponseBackModal(false);
+                  setResponseBackText('');
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={submitResponseBack}
+              >
+                Send Response
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div >
   );
 }

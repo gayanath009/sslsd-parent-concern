@@ -9,12 +9,17 @@ function RepresentativeDashboard() {
     const { email, name, userId, setEmail, setName, setRole, setUserId } = useUser();
     const [complaints, setComplaints] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState('new');
+    const [filter, setFilter] = useState(1);
+    const [priorityFilter, setPriorityFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedComplaint, setSelectedComplaint] = useState(null);
     const [responseText, setResponseText] = useState('');
     const [showForwardModal, setShowForwardModal] = useState(false);
     const [showReplyModal, setShowReplyModal] = useState(false);
+    const [showReadMoreModal, setShowReadMoreModal] = useState(false);
+    const [showCommentsModal, setShowCommentsModal] = useState(false);
+    const [comments, setComments] = useState([]);
+    const [loadingComments, setLoadingComments] = useState(false);
     const [forwardPriority, setForwardPriority] = useState('');
     const [forwardComment, setForwardComment] = useState('');
     const [stats, setStats] = useState({
@@ -49,7 +54,7 @@ function RepresentativeDashboard() {
                 .order('created_at', { ascending: false });
 
             // Fetch complaints assigned to this representative
-            if (filter === 'new') {
+            if (filter === 1) {
                 query = query.eq('cmplt_with_userid', userId);
             }
 
@@ -66,7 +71,7 @@ function RepresentativeDashboard() {
                 (data || []).map(async (complaint) => {
                     if (complaint.user_id) {
                         const { data: userData, error: userError } = await supabase
-                            .from('user')
+                            .from('appusers')
                             .select('name, email')
                             .eq('user_id', complaint.user_id)
                             .single();
@@ -93,33 +98,41 @@ function RepresentativeDashboard() {
     const calculateStats = (data) => {
         const assignedComplaints = data.filter(c => c.cmplt_with_userid === userId);
         const stats = {
-            assigned: assignedComplaints.filter(c => c.status === 'new').length,
-            reviewed: assignedComplaints.filter(c => c.status === 'reviewed').length,
-            forwarded: assignedComplaints.filter(c => c.status === 'forwarded').length,
-            open: assignedComplaints.filter(c => c.status === 'open').length,
-            closed: assignedComplaints.filter(c => c.status === 'closed').length,
+            assigned: assignedComplaints.filter(c => c.stat_code === 1).length,
+            reviewed: assignedComplaints.filter(c => c.stat_code === 2).length,
+            forwarded: assignedComplaints.filter(c => c.stat_code === 3).length,
+            //open: assignedComplaints.filter(c => c.stat_code === 'open').length,
+            //closed: assignedComplaints.filter(c => c.stat_code === 'closed').length,
             total: data.length
         };
         setStats(stats);
     };
 
-    const updateComplaintStatus = async (complaintId, newStatus) => {
+
+
+    const handleViewComments = async (complaint) => {
+        setSelectedComplaint(complaint);
+        setShowCommentsModal(true);
+        setLoadingComments(true);
+        setComments([]);
+
         try {
-            const { error } = await supabase
-                .from('complaint')
-                .update({ status: newStatus })
-                .eq('complaint_id', complaintId);
+            const { data, error } = await supabase
+                .from('comment')
+                .select('*, appusers(name)')
+                .eq('complaint_id', complaint.complaint_id)
+                .order('created_at', { ascending: true });
 
             if (error) {
-                console.error('Error updating status:', error);
-                alert('Failed to update status');
+                console.error('Error fetching comments:', error);
+                alert('Failed to load comments');
             } else {
-                alert('Status updated successfully');
-                fetchComplaints();
-                setSelectedComplaint(null);
+                setComments(data || []);
             }
-        } catch (error) {
-            console.error('Unexpected error:', error);
+        } catch (err) {
+            console.error('Unexpected error:', err);
+        } finally {
+            setLoadingComments(false);
         }
     };
 
@@ -142,33 +155,37 @@ function RepresentativeDashboard() {
                 });
 
             if (error) {
-                console.error('Error adding reply:', error);
-                alert('Failed to send reply to parent');
+                //console.error('Error adding reply:', error);
+                alert(' ❌ Failed to send reply to parent');
             } else {
-                alert('Reply sent to parent successfully!');
-                setResponseText('');
-                setShowReplyModal(false);
+                // Update complaint status to '2'
+                // Using RPC to bypass RLS policies
+                const { error: updateError } = await supabase
+                    .rpc('update_complaint_status', {
+                        p_complaint_id: complaintId,
+                        p_stat_code: 2
+                    });
 
-                // Update complaint status to 'reviewed'
-                await supabase
-                    .from('complaint')
-                    .update({ status: 'reviewed' })
-                    .eq('complaint_id', complaintId);
-
-                fetchComplaints();
+                if (updateError) {
+                    console.error('❌ Error updating status:', updateError);
+                    alert('Reply added, but failed to update status: ' + updateError.message);
+                } else {
+                    alert('✅ Reply sent to parent successfully!');
+                    setResponseText('');
+                    setShowReplyModal(false);
+                    fetchComplaints();
+                }
             }
-        } catch (error) {
-            console.error('Unexpected error:', error);
-            alert('An unexpected error occurred');
+        } catch (err) {
+            alert('❌ An unexpected error occurred', err);
+            console.error('Unexpected error:', err);
+
         }
     };
 
     const forwardToPrincipal = async (complaintId, priority, comment) => {
-        if (!comment?.trim()) { // Optional comment check handled in UI/Logic
-            // If we want comment to be optional, we can remove this check or make it conditional.
-            // Given user request is vague on comment, keeping it required for now as per my previous logic,
-            // but I will ensure the UI sends 'Forwarded via badge' if empty or handles it.
-            // Actually, the new modal has comment field.
+        if (!comment?.trim()) {
+
         }
 
         // Revised validation to allow empty comment if needed, but keeping strict for better clear communication
@@ -196,45 +213,51 @@ function RepresentativeDashboard() {
 
             if (commentError) {
                 console.error('Error adding comment:', commentError);
-                alert('Failed to add comment');
+                alert('❌ Failed to add comment');
                 return;
             }
 
-            // Update complaint status to 'forwarded' and set priority
+
+            // Update complaint status to '3'
+            // Using RPC to bypass RLS policies
             const { error: updateError } = await supabase
-                .from('complaint')
-                .update({
-                    status: 'forwarded',
-                    priority: priority
-                })
-                .eq('complaint_id', complaintId);
+                .rpc('update_complaint_status', {
+                    p_priority: priority,
+                    p_complaint_id: complaintId,
+                    //p_cmplt_with_userid: userId,
+                    p_stat_code: 3 //Forwarded to Principal
+                });
 
             if (updateError) {
                 console.error('Error updating complaint:', updateError);
                 alert('Failed to forward to principal');
             } else {
-                alert('Complaint forwarded to principal successfully!');
+                alert('✅ Complaint forwarded to principal successfully!');
                 setSelectedComplaint(null);
                 fetchComplaints();
             }
         } catch (error) {
             console.error('Unexpected error:', error);
-            alert('An unexpected error occurred');
+            alert('❌ An unexpected error occurred');
         }
     };
 
     const filteredComplaints = complaints.filter(complaint => {
         const matchesFilter =
             filter === 'all' ||
-            (filter === 'assigned' && complaint.cmplt_with_userid === userId) ||
-            complaint.status === filter;
+            (filter === '1' && complaint.cmplt_with_userid === userId) ||
+            complaint.stat_code === filter;
 
         const matchesSearch =
             complaint.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             complaint.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             complaint.user?.name?.toLowerCase().includes(searchTerm.toLowerCase());
 
-        return matchesFilter && matchesSearch;
+        const matchesPriority =
+            priorityFilter === 'all' ||
+            complaint.priority === priorityFilter;
+
+        return matchesFilter && matchesSearch && matchesPriority;
     });
 
     const getPriorityBadgeClass = (priority) => {
@@ -247,14 +270,21 @@ function RepresentativeDashboard() {
         }
     };
 
-    const getStatusBadgeClass = (status) => {
-        switch (status) {
-            case 'new': return 'badge-new';
-            case 'reviewed': return 'badge-reviewed';
-            case 'forwarded': return 'badge-forwarded';
-            case 'open': return 'badge-open';
-            case 'closed': return 'badge-closed';
-            default: return 'badge-default';
+    const getStatusBadge = (statCode) => {
+        switch (statCode) {
+            case 1:
+                return <span className="badge" style={{ backgroundColor: '#219ebc' }}>Initiated By Parent</span>;
+            case 2:
+                return <span className="badge" style={{ backgroundColor: '#75B06F' }}>Responded by Parent Representative</span>;
+            case 3:
+                return <span className="badge" style={{ backgroundColor: '#C47BE4' }}>Forwarded to Principal</span>;
+            case 4:
+            case 6:
+                return <span className="badge" style={{ backgroundColor: '#E5BA41' }}>Open</span>;
+            case 5:
+                return <span className="badge" style={{ backgroundColor: '#007E6E' }}>Closed</span>;
+            default:
+                return null;
         }
     };
 
@@ -311,7 +341,7 @@ function RepresentativeDashboard() {
                             <div className="stat-icon">👁️</div>
                             <div className="stat-details">
                                 <h3>{stats.reviewed}</h3>
-                                <p>Reviewed</p>
+                                <p>Responded By PA</p>
                             </div>
                         </div>
                     </div>
@@ -351,58 +381,52 @@ function RepresentativeDashboard() {
                     <div className="card-body">
                         <div className="row align-items-center">
                             <div className="col-md-6 mb-3 mb-md-0">
-                                <div className="btn-group" role="group">
-                                    {/* <button
-                                        className={`btn ${filter === 'new' ? 'btn-primary' : 'btn-outline-primary'}`}
-                                        onClick={() => setFilter('new')}
-                                    >
-                                        New
-                                    </button> */}
+                                <div className="btn-group w-100" role="group">
                                     <button
-                                        className={`btn ${filter === 'all' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        className={`btn w-100 ${filter === 'all' ? 'btn-primary' : 'btn-outline-primary'}`}
                                         onClick={() => setFilter('all')}
                                     >
                                         All
                                     </button>
                                     <button
-                                        className={`btn ${filter === 'new' ? 'btn-primary' : 'btn-outline-primary'}`}
-                                        onClick={() => setFilter('new')}
+                                        className={`btn w-100 ${filter === 1 ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        onClick={() => setFilter(1)}
                                     >
                                         New
                                     </button>
                                     <button
-                                        className={`btn ${filter === 'reviewed' ? 'btn-primary' : 'btn-outline-primary'}`}
-                                        onClick={() => setFilter('reviewed')}
+                                        className={`btn w-100 ${filter === 2 ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        onClick={() => setFilter(2)}
                                     >
-                                        Reviewed
+                                        Responded By PA
                                     </button>
 
                                     <button
-                                        className={`btn ${filter === 'forwarded' ? 'btn-primary' : 'btn-outline-primary'}`}
-                                        onClick={() => setFilter('forwarded')}
+                                        className={`btn w-100 ${filter === 3 ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        onClick={() => setFilter(3)}
                                     >
                                         Forwarded
                                     </button>
-
-                                    {/* <button
-                                        className={`btn ${filter === 'open' ? 'btn-primary' : 'btn-outline-primary'}`}
-                                        onClick={() => setFilter('open')}
-                                    >
-                                        Open
-                                    </button>
-                                    <button
-                                        className={`btn ${filter === 'closed' ? 'btn-primary' : 'btn-outline-primary'}`}
-                                        onClick={() => setFilter('closed')}
-                                    >
-                                        Closed
-                                    </button> */}
                                 </div>
                             </div>
-                            <div className="col-md-6">
+                            <div className="col-md-3">
+                                <select
+                                    className="form-select"
+                                    value={priorityFilter}
+                                    onChange={(e) => setPriorityFilter(e.target.value)}
+                                >
+                                    <option value="all">All Priorities</option>
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                    <option value="urgent">Urgent</option>
+                                </select>
+                            </div>
+                            <div className="col-md-3">
                                 <input
                                     type="text"
                                     className="form-control"
-                                    placeholder="🔍 Search complaints..."
+                                    placeholder="🔍 Search concerns..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
@@ -417,7 +441,7 @@ function RepresentativeDashboard() {
                         <div className="complaints-list">
                             {filteredComplaints.length === 0 ? (
                                 <div className="card text-center p-5">
-                                    <h5>No complaints found</h5>
+                                    <h5>No concerns found</h5>
                                     <p className="text-muted">Try adjusting your filters or search term</p>
                                 </div>
                             ) : (
@@ -439,43 +463,56 @@ function RepresentativeDashboard() {
                                                     </p>
                                                 </div>
                                                 <div className="d-flex gap-2 flex-wrap">
+                                                    {getStatusBadge(complaint.stat_code)}
+                                                    {(complaint.stat_code === 2 || complaint.stat_code === 4 || complaint.stat_code === 5 || complaint.stat_code === 6) && (
+                                                        <button
+                                                            className="btn btn-sm text-white"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleViewComments(complaint);
+                                                            }}
+                                                            style={{ backgroundColor: '#6f42c1' }}
+                                                        >
+                                                            View Response
+                                                        </button>
+                                                    )}
 
-                                                    {complaint.status === 'new' && (
+                                                    {complaint.stat_code === 1 && (
 
                                                         <div className="d-flex gap-2 flex-wrap">
 
                                                             {complaint.user_id && (
-                                                                <span
-                                                                    className="badge badge-payment cursor-pointer"
+                                                                <button
+                                                                    className="btn btn-sm text-white"
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
                                                                         setSelectedComplaint(complaint);
                                                                         setShowReplyModal(true);
                                                                     }}
-                                                                    style={{ cursor: 'pointer' }}
+                                                                    style={{ backgroundColor: '#6f42c1' }}
                                                                 >
                                                                     Reply to Parent
-                                                                </span>
+                                                                </button>
                                                             )}
 
 
-                                                            <span
-                                                                className="badge badge-mine cursor-pointer"
+                                                            <button
+                                                                className="btn btn-sm text-white"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     setSelectedComplaint(complaint);
                                                                     setShowForwardModal(true);
                                                                 }}
-                                                                style={{ cursor: 'pointer' }}
+                                                                style={{ backgroundColor: '#344386' }}
                                                             >
                                                                 Forward to Principal
-                                                            </span>
+                                                            </button>
                                                         </div>
                                                     )}
 
                                                 </div>
                                             </div>
-                                            <p className="complaint-description">{complaint.description.substring(0, 150)}...</p>
+                                            <p className="complaint-description">{complaint.description.substring(0, 150)}... <span className="text-primary ms-2" style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={(e) => { e.stopPropagation(); setSelectedComplaint(complaint); setShowReadMoreModal(true); }}>More</span></p>
                                         </div>
                                     </div>
                                 ))
@@ -497,7 +534,7 @@ function RepresentativeDashboard() {
                                 </div>
                                 <div className="modal-body">
                                     <div className="mb-3">
-                                        <label className="form-label fw-bold">Complaint: {selectedComplaint.title}</label>
+                                        <label className="form-label fw-bold">Concern: {selectedComplaint.title}</label>
                                     </div>
 
                                     <div className="mb-3">
@@ -576,18 +613,18 @@ function RepresentativeDashboard() {
                                 </div>
                                 <div className="modal-body">
                                     <div className="mb-3">
-                                        <label className="form-label fw-bold">Complaint: {selectedComplaint.title}</label>
+                                        <label className="form-label fw-bold">Concern : {selectedComplaint.title}</label>
                                     </div>
 
                                     <div className="mb-3">
                                         <label htmlFor="replyText" className="form-label fw-bold">
-                                            Reply Message <span className="text-danger">*</span>
+                                            Response Message <span className="text-danger">*</span>
                                         </label>
                                         <textarea
                                             id="replyText"
                                             className="form-control"
                                             rows="5"
-                                            placeholder="Type your reply to the parent..."
+                                            placeholder="Type your response to the parent..."
                                             value={responseText}
                                             onChange={(e) => setResponseText(e.target.value)}
                                         ></textarea>
@@ -605,10 +642,127 @@ function RepresentativeDashboard() {
                                     </button>
                                     <button
                                         className="btn btn-success"
-                                        onClick={() => replyToParent(selectedComplaint.complaint_id)}
-                                    >
-                                        📧 Send Reply
+                                        onClick={() => replyToParent(selectedComplaint.complaint_id)}                                    >
+                                        📧 Send Response
                                     </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Read More Modal */}
+                    {showReadMoreModal && selectedComplaint && (
+                        <div className="modal-overlay" onClick={() => setShowReadMoreModal(false)}>
+                            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                                <div className="modal-header">
+                                    <h5 style={{ color: 'white' }}>Concern Details</h5>
+                                    <button
+                                        className="btn-close"
+                                        onClick={() => setShowReadMoreModal(false)}
+                                    >X</button>
+                                </div>
+                                <div className="modal-body">
+                                    <div className="mb-3">
+                                        <label className="form-label fw-bold">From:</label>
+                                        <p className="form-control-static">{selectedComplaint.user?.name || 'Unknown'} ({selectedComplaint.user?.email || 'N/A'})</p>
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label fw-bold">Contact:</label>
+                                        <p className="form-control-static">{selectedComplaint.contact_number || 'Unknown'}</p>
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label fw-bold">Type:</label>
+                                        <p className="form-control-static">{selectedComplaint.type}</p>
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label fw-bold">Student Name:</label>
+                                        <p className="form-control-static">{selectedComplaint.student_name}</p>
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label fw-bold">Student Number:</label>
+                                        <p className="form-control-static">{selectedComplaint.student_no}</p>
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label fw-bold">Priority:</label>
+                                        <p className="form-control-static">
+                                            {selectedComplaint.priority ? (
+                                                <span className={`badge ${getPriorityBadgeClass(selectedComplaint.priority)}`}>
+                                                    {selectedComplaint.priority.toUpperCase()}
+                                                </span>
+                                            ) : 'N/A'}
+                                        </p>
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label fw-bold">Title:</label>
+                                        <p className="form-control-static">{selectedComplaint.title}</p>
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label fw-bold">Description:</label>
+                                        <div
+                                            className="p-3 border rounded bg-light"
+                                            style={{ maxHeight: '300px', overflowY: 'auto' }}
+                                        >
+                                            {selectedComplaint.description}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="modal-footer">
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={() => setShowReadMoreModal(false)}
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Comments Modal */}
+                    {showCommentsModal && (
+                        <div className="modal-overlay" onClick={() => setShowCommentsModal(false)}>
+                            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                                <div className="modal-header">
+                                    <h5 style={{ color: 'white' }}>Response History</h5>
+                                    <button
+                                        className="btn-close"
+                                        onClick={() => setShowCommentsModal(false)}
+                                    >X</button>
+                                </div>
+                                <div className="modal-body">
+                                    {loadingComments ? (
+                                        <div className="text-center p-3">
+                                            <div className="spinner-border text-primary spinner-border-sm" role="status">
+                                                <span className="visually-hidden">Loading...</span>
+                                            </div>
+                                        </div>
+                                    ) : comments.length > 0 ? (
+                                        <ul className="list-group list-group-flush">
+                                            {comments.map((comment) => (
+                                                <li key={comment.comment_id} className="list-group-item">
+                                                    <div className="d-flex justify-content-between">
+                                                        <strong className="mb-1">{comment.appusers?.name || 'Unknown'}</strong>
+                                                        <small className="text-muted">
+                                                            {new Date(comment.created_at).toLocaleString()}
+                                                        </small>
+                                                    </div>
+                                                    <div className="mb-3">
+                                                        <div
+                                                            className="p-3 border rounded bg-light"
+                                                            style={{ maxHeight: '300px', overflowY: 'auto' }}
+                                                        >
+                                                            {comment.comment_text}
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <p className="text-muted text-center my-3">No responses found.</p>
+                                    )}
+                                </div>
+                                <div className="modal-footer">
+                                    <button className="btn btn-secondary" onClick={() => setShowCommentsModal(false)}>Close</button>
                                 </div>
                             </div>
                         </div>

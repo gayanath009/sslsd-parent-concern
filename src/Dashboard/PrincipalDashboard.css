@@ -2,15 +2,15 @@
 
 .principal-dashboard-container {
     min-height: 100vh;
-    background: #bee9e8;
+    background: #599d9c;
 }
 
 .bg-gradient {
-    background: #003559 !important;
+    background: #006f3c !important;
 }
 
 .navbar {
-    box-shadow: #887766;
+    box-shadow: #004526;
 }
 
 .logout-btn {
@@ -95,6 +95,20 @@
 
 .btn-group .btn:hover {
     transform: translateY(-2px);
+}
+
+.btn-outline-primary {
+    color: #006f3c;
+    border-color: #006f3c;
+    background: transparent;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:active,
+.btn-outline-primary.active {
+    color: white;
+    background: #006f3c;
+    border-color: #006f3c;
 }
 
 /* Complaints List */
@@ -348,7 +362,7 @@
 }
 
 .modal-header {
-    background: linear-gradient(135deg, #344386 0%, #2a3670 100%);
+    background: linear-gradient(135deg, #006f3c 0%, #006f3c 100%);
     color: white;
     padding: 1.5rem;
     border-radius: 15px 15px 0 0;

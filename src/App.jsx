@@ -2,9 +2,9 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { UserProvider } from './context/UserContext';
 import Home from './Home/Home';
 import Login from './Login/Login';
+import UpdatePassword from './Login/UpdatePassword';
 import Dashboard from './Dashboard/Dashboard';
 import Complaints from './Complaints/Complaints';
-import ComplaintsList from './Complaints/ComplaintsList';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -14,6 +14,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/update-password" element={<UpdatePassword />} />
           <Route
             path="/dashboard"
             element={

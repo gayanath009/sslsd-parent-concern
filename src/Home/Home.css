@@ -2,7 +2,7 @@
 
 .home-container {
     min-height: 100vh;
-    background: #407ba7;
+    background: #599d9c;
     display: flex;
     align-items: center;
 }
@@ -30,7 +30,7 @@
 }
 
 .home-container .btn-primary {
-    background: linear-gradient(135deg, #344386 0%, #344386 100%);
+    background: linear-gradient(135deg, #006f3c 0%, #006f3c 100%);
     border: none;
     border-radius: 90px;
     padding: 12px 40px;
@@ -42,7 +42,7 @@
 .home-container .btn-primary:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(102, 126, 2, );
-    background: linear-gradient(135deg, #344386 0%, #344386 100%);
+    background: linear-gradient(135deg, #058743 0%, #058743 100%);
 }
 
 .feature-card {

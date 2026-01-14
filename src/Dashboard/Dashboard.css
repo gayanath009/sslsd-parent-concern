@@ -2,15 +2,15 @@
 
 .dashboard-container {
     min-height: 100vh;
-    background: #407ba7;
+    background: #599d9c;
 }
 
 .bg-gradient {
-    background: #003559 !important;
+    background: #006f3c !important;
 }
 
 .navbar {
-    box-shadow: #006daa;
+    box-shadow: #004526;
 }
 
 .logout-btn {
@@ -72,7 +72,7 @@
 }
 
 .concern-btn {
-    background: #012a4a;
+    background: linear-gradient(135deg, #006f3c 0%, #006f3c 100%);
     border: none;
     border-radius: 5px;
     /* Standard button radius */
@@ -86,7 +86,7 @@
 .concern-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(2, 12, 91, 0.6);
-    background: #1e6091;
+    background: linear-gradient(135deg, #058743 0%, #058743 100%);
 
 }
 
@@ -198,4 +198,20 @@
 
 .list-group-item:first-child {
     border-top: none;
+}
+
+/* History Header Style */
+.bg-history {
+    background: linear-gradient(135deg, #006f3c 0%, #006f3c 100%);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-top-left-radius: 0.375rem;
+    border-top-right-radius: 0.375rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.bg-history h5 {
+    font-weight: 600;
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
 }
