@@ -13,6 +13,8 @@ function AdminDashboard() {
     const [editingUser, setEditingUser] = useState(null);
     const [newRole, setNewRole] = useState('');
     const [newGrade, setNewGrade] = useState('');
+    const [newName, setNewName] = useState('');
+    const [newIsActive, setNewIsActive] = useState(true);
     const [showPurgeModal, setShowPurgeModal] = useState(false);
     const [purgeOption, setPurgeOption] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
@@ -53,10 +55,12 @@ function AdminDashboard() {
         }
     };
 
-    const handleRoleChange = async (userId, currentRole, currentGrade) => {
+    const handleRoleChange = async (userId, currentRole, currentGrade, currentName, currentIsActive) => {
         setEditingUser(userId);
         setNewRole(currentRole);
         setNewGrade(currentGrade || '');
+        setNewName(currentName || '');
+        setNewIsActive(currentIsActive !== false); // Default to true if undefined
     };
 
     const saveRoleChange = async () => {
@@ -70,8 +74,10 @@ function AdminDashboard() {
             const { error } = await supabase
                 .from('appusers')
                 .update({
+                    name: newName,
                     role: newRole,
-                    grade: newGrade || null
+                    grade: newGrade || null,
+                    is_active: newIsActive
                 })
                 .eq('user_id', editingUser);
 
@@ -335,6 +341,7 @@ function AdminDashboard() {
                                             <th>Email</th>
                                             <th>Role</th>
                                             <th>Grade</th>
+                                            <th>Status</th>
                                             <th>Created At</th>
                                             <th>Actions</th>
                                         </tr>
@@ -342,7 +349,18 @@ function AdminDashboard() {
                                     <tbody>
                                         {filteredUsers.map((user) => (
                                             <tr key={user.user_id}>
-                                                <td>{user.name}</td>
+                                                <td>
+                                                    {editingUser === user.user_id ? (
+                                                        <input
+                                                            type="text"
+                                                            className="form-control form-control-sm"
+                                                            value={newName}
+                                                            onChange={(e) => setNewName(e.target.value)}
+                                                        />
+                                                    ) : (
+                                                        user.name
+                                                    )}
+                                                </td>
                                                 <td>{user.email}</td>
                                                 <td>
                                                     {editingUser === user.user_id ? (
@@ -382,6 +400,22 @@ function AdminDashboard() {
                                                         getGradeDisplay(user.grade)
                                                     )}
                                                 </td>
+                                                <td>
+                                                    {editingUser === user.user_id ? (
+                                                        <select
+                                                            className="form-select form-select-sm"
+                                                            value={newIsActive}
+                                                            onChange={(e) => setNewIsActive(e.target.value === 'true')}
+                                                        >
+                                                            <option value="true">Active</option>
+                                                            <option value="false">Deactive</option>
+                                                        </select>
+                                                    ) : (
+                                                        <span className={`badge ${user.is_active ? 'bg-success' : 'bg-danger'}`}>
+                                                            {user.is_active ? 'Active' : 'Deactive'}
+                                                        </span>
+                                                    )}
+                                                </td>
                                                 <td>{new Date(user.created_at).toLocaleDateString()}</td>
                                                 <td>
                                                     {editingUser === user.user_id ? (
@@ -402,7 +436,7 @@ function AdminDashboard() {
                                                     ) : (
                                                         <button
                                                             className="btn btn-primary btn-sm"
-                                                            onClick={() => handleRoleChange(user.user_id, user.role, user.grade)}
+                                                            onClick={() => handleRoleChange(user.user_id, user.role, user.grade, user.name, user.is_active)}
                                                         >
                                                             Edit
                                                         </button>

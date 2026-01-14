@@ -35,7 +35,6 @@ function Dashboard() {
   const handleConcern = () => {
     navigate('/complaints');
   };
-
   useEffect(() => {
     const fetchUserInfo = async () => {
       const { data, error } = await supabase.auth.getSession();
@@ -58,7 +57,7 @@ function Dashboard() {
         // ---- Check if record exists ----
         const { data: existingRecord } = await supabase
           .from('appusers')
-          .select('user_id, role')
+          .select('user_id, role, is_active')
           .eq('email', email)
           .maybeSingle();
 
@@ -74,7 +73,7 @@ function Dashboard() {
               is_active: true,
               created_at: new Date().toISOString(),
             })
-            .select('user_id, role')
+            .select('user_id, role, is_active')
             .single();
 
           if (insertError) {
@@ -85,7 +84,12 @@ function Dashboard() {
             setUserId(newUser?.user_id || null);
           }
         } else {
-          //console.log('Record already exists');
+          if (existingRecord.is_active === false) {
+            alert("❌ Your account is deactivated. Please contact the administrator.");
+            await supabase.auth.signOut();
+            navigate('/login');
+            return;
+          }
           setRole(existingRecord.role || 'parent');
           setUserId(existingRecord.user_id || null);
         }
@@ -98,7 +102,6 @@ function Dashboard() {
 
     fetchUserInfo();
   }, [navigate, setEmail, setName, setRole, setUserId]);
-
   useEffect(() => {
     const getComplaints = async () => {
       if (!email || role !== 'parent') return; // fetch for parents

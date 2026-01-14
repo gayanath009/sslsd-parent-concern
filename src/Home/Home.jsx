@@ -38,11 +38,11 @@ function Home() {
                   </button>
                 </div>
                 <div>&nbsp;</div>
-                <div className="text-center">
+                {/* <div className="text-center">
                   <button className="btn btn-primary btn-lg px-5" onClick={handleAnonymousClick}>
                     Submit Anonymously
                   </button>
-                </div>
+                </div> */}
 
               </div>
             </div>
