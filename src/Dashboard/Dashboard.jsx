@@ -372,7 +372,7 @@ function Dashboard() {
                           className="badge rounded-pill status-badge"
                           style={{ backgroundColor: complaint.status_typ?.color || '#6c757d' }}
                         >
-                          {complaint.status_typ?.display}
+                          <a href="#" style={{ color: 'white', fontWeight: 'bold' }}>{complaint.status_typ?.display}</a>
                         </span>
                       </div>
                     </div>
