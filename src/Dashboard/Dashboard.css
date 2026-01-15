@@ -215,3 +215,25 @@
     font-size: 1.1rem;
     letter-spacing: 0.5px;
 }
+
+.status-badge {
+    white-space: normal !important;
+    text-align: center;
+    max-width: 180px;
+    line-height: 1.4;
+    padding: 0.6em 1em !important;
+    font-weight: 500;
+}
+
+@media (max-width: 576px) {
+    .status-badge {
+        max-width: 100%;
+        width: 100%;
+        font-size: 0.85rem;
+    }
+
+    .list-group-item .d-flex.align-items-center {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}

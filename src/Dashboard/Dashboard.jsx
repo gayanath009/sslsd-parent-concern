@@ -327,11 +327,11 @@ function Dashboard() {
                   complaints.map((complaint) => (
                     <div
                       key={complaint.complaint_id}
-                      className="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                      className="list-group-item list-group-item-action d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3"
                       onClick={() => handleComplaintClick(complaint.complaint_id)}
                       style={{ cursor: 'pointer' }}
                     >
-                      <div>
+                      <div className="flex-grow-1">
                         <small className="text-muted">{new Date(complaint.created_at).toLocaleDateString()}</small>
                         <div className="fw-bold">{complaint.title}</div>
                         <small className="text-muted">
@@ -355,7 +355,7 @@ function Dashboard() {
 
                       </div>
 
-                      <div className="d-flex align-items-center gap-2">
+                      <div className="d-flex align-items-center gap-2 flex-wrap">
                         {complaint.stat_code === 4 && (
                           <button
                             className="btn btn-sm btn-outline-primary"
@@ -369,7 +369,7 @@ function Dashboard() {
                           </button>
                         )}
                         <span
-                          className="badge rounded-pill"
+                          className="badge rounded-pill status-badge"
                           style={{ backgroundColor: complaint.status_typ?.color || '#6c757d' }}
                         >
                           {complaint.status_typ?.display}
