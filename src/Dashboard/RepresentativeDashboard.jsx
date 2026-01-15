@@ -273,16 +273,16 @@ function RepresentativeDashboard() {
     const getStatusBadge = (statCode) => {
         switch (statCode) {
             case 1:
-                return <span className="badge status-badge" style={{ backgroundColor: '#219ebc' }}><a href="#" style={{ color: 'white', fontWeight: 'bold' }}>Initiated By Parent</a></span>;
+                return <span className="badge status-badge" style={{ backgroundColor: '#219ebc' }}>Initiated By Parent</span>;
             case 2:
-                return <span className="badge status-badge" style={{ backgroundColor: '#75B06F' }}><a href="#" style={{ color: 'white', fontWeight: 'bold' }}>Responded by Parent Representative</a></span>;
+                return <span className="badge status-badge" style={{ backgroundColor: '#75B06F' }}>Responded by Parent Representative</span>;
             case 3:
-                return <span className="badge status-badge" style={{ backgroundColor: '#C47BE4' }}><a href="#" style={{ color: 'white', fontWeight: 'bold' }}>Forwarded to Principal</a></span>;
+                return <span className="badge status-badge" style={{ backgroundColor: '#C47BE4' }}>Forwarded to Principal</span>;
             case 4:
             case 6:
-                return <span className="badge status-badge" style={{ backgroundColor: '#E5BA41' }}><a href="#" style={{ color: 'white', fontWeight: 'bold' }}>Open</a></span>;
+                return <span className="badge status-badge" style={{ backgroundColor: '#E5BA41' }}>Open</span>;
             case 5:
-                return <span className="badge status-badge" style={{ backgroundColor: '#007E6E' }}><a href="#" style={{ color: 'white', fontWeight: 'bold' }}>Closed</a></span>;
+                return <span className="badge status-badge" style={{ backgroundColor: '#007E6E' }}>Closed</span>;
             default:
                 return null;
         }
