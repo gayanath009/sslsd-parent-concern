@@ -206,16 +206,16 @@ function BoardMemberDashboard() {
     const getStatusBadge = (statCode) => {
         switch (statCode) {
             case 1:
-                return <span className="badge" style={{ backgroundColor: '#219ebc' }}>Initiated By Parent</span>;
+                return <span className="badge status-badge" style={{ backgroundColor: '#219ebc' }}><a href="#" style={{ color: 'white', fontWeight: 'bold' }}>Initiated By Parent</a></span>;
             case 2:
-                return <span className="badge" style={{ backgroundColor: '#75B06F' }}>Responded by Parent Representative</span>;
+                return <span className="badge status-badge" style={{ backgroundColor: '#75B06F' }}><a href="#" style={{ color: 'white', fontWeight: 'bold' }}>Responded by Parent Representative</a></span>;
             case 3:
-                return <span className="badge" style={{ backgroundColor: '#C47BE4' }}>With Principal</span>;
+                return <span className="badge status-badge" style={{ backgroundColor: '#C47BE4' }}><a href="#" style={{ color: 'white', fontWeight: 'bold' }}>With Principal</a></span>;
             case 4:
             case 6:
-                return <span className="badge" style={{ backgroundColor: '#E5BA41' }}>Open</span>;
+                return <span className="badge status-badge" style={{ backgroundColor: '#E5BA41' }}><a href="#" style={{ color: 'white', fontWeight: 'bold' }}>Open</a></span>;
             case 5:
-                return <span className="badge" style={{ backgroundColor: '#007E6E' }}>Closed</span>;
+                return <span className="badge status-badge" style={{ backgroundColor: '#007E6E' }}><a href="#" style={{ color: 'white', fontWeight: 'bold' }}>Closed</a></span>;
             default:
                 return null;
         }
