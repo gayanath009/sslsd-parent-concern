@@ -205,7 +205,7 @@ function PrincipalDashboard() {
             for (const complaint of filteredComplaints) {
                 const { data: comments, error } = await supabase
                     .from('comment')
-                    .select('*, appusers(name)')
+                    .select('*, appusers(name), stat_type(display)')
                     .eq('complaint_id', complaint.complaint_id)
                     .order('created_at', { ascending: true });
 
@@ -221,7 +221,7 @@ function PrincipalDashboard() {
                     'Section': complaint.section || '',
                     'Priority': complaint.priority || '',
                     'Type': complaint.type || '',
-                    'Status': complaint.stat_code || '',
+                    'Status': complaint.stat_type?.display || '',
                     'Complaint Created Datetime': formatDate(complaint.created_at)
                 };
 
