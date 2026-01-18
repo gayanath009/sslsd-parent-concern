@@ -219,6 +219,9 @@ function PrincipalDashboard() {
                     'Student Name': complaint.student_name || '',
                     'Grade': complaint.grade || '',
                     'Section': complaint.section || '',
+                    'Priority': complaint.priority || '',
+                    'Type': complaint.type || '',
+                    'Status': complaint.stat_code || '',
                     'Complaint Created Datetime': formatDate(complaint.created_at)
                 };
 
@@ -234,6 +237,9 @@ function PrincipalDashboard() {
                             'Student Name': index === 0 ? baseData['Student Name'] : '',
                             'Grade': index === 0 ? baseData['Grade'] : '',
                             'Section': index === 0 ? baseData['Section'] : '',
+                            'Priority': index === 0 ? baseData['Priority'] : '',
+                            'Type': index === 0 ? baseData['Type'] : '',
+                            'Status': index === 0 ? baseData['Status'] : '',
                             'Complaint Created Datetime': index === 0 ? baseData['Complaint Created Datetime'] : '',
                             'Action Taken': comment.comment_text,
                             'Action By': comment.appusers?.name || 'Unknown',
