@@ -132,6 +132,7 @@ function BoardMemberDashboard() {
         setLoading(true);
         try {
             const exportData = [];
+            let runningNo = 1;
 
             for (const complaint of filteredComplaints) {
                 const { data: comments, error } = await supabase
@@ -141,7 +142,8 @@ function BoardMemberDashboard() {
                     .order('created_at', { ascending: true });
 
                 const baseData = {
-                    'Concern ID': complaint.complaint_id,
+                    'No': runningNo++,
+                    //'Concern ID': complaint.complaint_id,
                     'Title': complaint.title,
                     'Description': complaint.description,
                     'Parent Name': complaint.user?.name || 'Anonymous',
@@ -150,13 +152,17 @@ function BoardMemberDashboard() {
                     'Student Name': complaint.student_name || '',
                     'Grade': complaint.grade || '',
                     'Section': complaint.section || '',
+                    'Priority': complaint.priority || '',
+                    'Type': complaint.type || '',
+                    'Status': complaint.status_typ?.display || complaint.stat_code || '',
                     'Complaint Created Datetime': formatDate(complaint.created_at)
                 };
 
                 if (comments && comments.length > 0) {
                     comments.forEach((comment, index) => {
                         exportData.push({
-                            'Concern ID': index === 0 ? baseData['Complaint ID'] : '',
+                            'No': index === 0 ? baseData['No'] : '',
+                            //'Concern ID': index === 0 ? baseData['Concern ID'] : '',
                             'Title': index === 0 ? baseData['Title'] : '',
                             'Description': index === 0 ? baseData['Description'] : '',
                             'Parent Name': index === 0 ? baseData['Parent Name'] : '',
@@ -165,6 +171,9 @@ function BoardMemberDashboard() {
                             'Student Name': index === 0 ? baseData['Student Name'] : '',
                             'Grade': index === 0 ? baseData['Grade'] : '',
                             'Section': index === 0 ? baseData['Section'] : '',
+                            'Priority': index === 0 ? baseData['Priority'] : '',
+                            'Type': index === 0 ? baseData['Type'] : '',
+                            'Status': index === 0 ? baseData['Status'] : '',
                             'Complaint Created Datetime': index === 0 ? baseData['Complaint Created Datetime'] : '',
                             'Action Taken': comment.comment_text,
                             'Action By': comment.appusers?.name || 'Unknown',
@@ -179,6 +188,9 @@ function BoardMemberDashboard() {
                         'Action Datetime': ''
                     });
                 }
+
+                // Add a blank row space between complaints
+                exportData.push({});
             }
 
             const ws = XLSX.utils.json_to_sheet(exportData);

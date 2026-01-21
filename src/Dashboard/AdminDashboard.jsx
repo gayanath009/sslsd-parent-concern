@@ -15,8 +15,6 @@ function AdminDashboard() {
     const [newGrade, setNewGrade] = useState('');
     const [newName, setNewName] = useState('');
     const [newIsActive, setNewIsActive] = useState(true);
-    const [showPurgeModal, setShowPurgeModal] = useState(false);
-    const [purgeOption, setPurgeOption] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
 
     const roles = ['admin', 'parent', 'representative', 'board_member', 'principal'];
@@ -102,71 +100,93 @@ function AdminDashboard() {
         return `Grade ${grade}`;
     };
 
-    const exportComplaintsData = async (startDate) => {
+    const handleExportData = async () => {
+        const confirmExport = window.confirm("Are you sure you want to export all system data?");
+        if (!confirmExport) return;
+
+        setLoading(true);
         try {
-            // Fetch complaints from the specified date
-            const { data: complaints, error: complaintsError } = await supabase
-                .from('complaint')
-                .select('*')
-                .gte('created_at', startDate)
-                .order('created_at', { ascending: false });
-
-            if (complaintsError) {
-                console.error('Error fetching complaints:', complaintsError);
-                return null;
-            }
-
-            // Fetch all users and comments
-            const { data: users } = await supabase.from('appusers').select('*');
+            // Fetch all data for backup
+            const { data: appusers } = await supabase.from('appusers').select('*');
+            const { data: complaints } = await supabase.from('complaint').select('*').order('created_at', { ascending: false });
             const { data: comments } = await supabase.from('comment').select('*');
+            const { data: complaintTypes } = await supabase.from('complaint_typ').select('*');
+            const { data: statusTypes } = await supabase.from('status_typ').select('*');
 
+            const wb = XLSX.utils.book_new();
+
+            // 1. Formatted Report
             const exportData = [];
+            if (complaints && appusers && comments) {
+                let runningNo = 1;
 
-            for (const complaint of complaints) {
-                const user = users?.find(u => u.user_id === complaint.user_id);
-                const complaintComments = comments?.filter(c => c.complaint_id === complaint.complaint_id) || [];
+                for (const complaint of complaints) {
+                    const user = appusers.find(u => u.user_id === complaint.user_id);
+                    const complaintComments = comments.filter(c => c.complaint_id === complaint.complaint_id) || [];
 
-                const baseData = {
-                    'Concern ID': complaint.complaint_id,
-                    'Submitted By': user?.name || 'Unknown',
-                    'Email': user?.email || 'N/A',
-                    'Contact': complaint.contact_number || 'N/A',
-                    'Type': complaint.type || 'N/A',
-                    'Student Name': complaint.student_name || 'N/A',
-                    'Student No': complaint.student_no || 'N/A',
-                    'Grade': complaint.grade || 'N/A',
-                    'Section': complaint.section || 'N/A',
-                    'Title': complaint.title,
-                    'Description': complaint.description,
-                    'Priority': complaint.priority || 'N/A',
-                    'Status': getStatusText(complaint.stat_code),
-                    'Created At': new Date(complaint.created_at).toLocaleString()
-                };
+                    const baseData = {
+                        'No': runningNo++,
+                        'Concern ID': complaint.complaint_id,
+                        'Submitted By': user?.name || 'Unknown',
+                        'Email': user?.email || 'N/A',
+                        'Contact': complaint.contact_number || 'N/A',
+                        'Type': complaint.type || 'N/A',
+                        'Student Name': complaint.student_name || 'N/A',
+                        'Student No': complaint.student_no || 'N/A',
+                        'Grade': complaint.grade || 'N/A',
+                        'Section': complaint.section || 'N/A',
+                        'Title': complaint.title,
+                        'Description': complaint.description,
+                        'Priority': complaint.priority || 'N/A',
+                        'Status': getStatusText(complaint.stat_code),
+                        'Created At': new Date(complaint.created_at).toLocaleString()
+                    };
 
-                if (complaintComments.length > 0) {
-                    complaintComments.forEach((comment, index) => {
-                        const commentUser = users?.find(u => u.user_id === comment.user_id);
+                    if (complaintComments.length > 0) {
+                        complaintComments.forEach((comment) => {
+                            const commentUser = appusers.find(u => u.user_id === comment.user_id);
+                            exportData.push({
+                                ...baseData,
+                                'Action Taken': comment.comment_text,
+                                'Action By': commentUser?.name || 'Unknown',
+                                'Action Datetime': new Date(comment.created_at).toLocaleString()
+                            });
+                        });
+                    } else {
                         exportData.push({
                             ...baseData,
-                            'Action Taken': comment.comment_text,
-                            'Action By': commentUser?.name || 'Unknown',
-                            'Action Datetime': new Date(comment.created_at).toLocaleString()
+                            'Action Taken': 'No actions yet',
+                            'Action By': '',
+                            'Action Datetime': ''
                         });
-                    });
-                } else {
-                    exportData.push({
-                        ...baseData,
-                        'Action Taken': 'No actions yet',
-                        'Action By': '',
-                        'Action Datetime': ''
-                    });
+                    }
                 }
             }
 
-            return exportData;
+            if (exportData.length > 0) {
+                const wsReport = XLSX.utils.json_to_sheet(exportData);
+                XLSX.utils.book_append_sheet(wb, wsReport, 'Detailed Report');
+            }
+
+            // 2. Raw Tables
+            if (appusers?.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(appusers), 'appusers');
+            if (complaints?.length) {
+                // Add running number to raw complaints as well for easy reference
+                const rawComplaints = complaints.map((c, i) => ({ running_id: i + 1, ...c }));
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rawComplaints), 'complaint');
+            }
+            if (comments?.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(comments), 'comment');
+            if (complaintTypes?.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(complaintTypes), 'complaint_typ');
+            if (statusTypes?.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(statusTypes), 'status_typ');
+
+            XLSX.writeFile(wb, `System_Backup_${new Date().toISOString().split('T')[0]}.xlsx`);
+            alert('✅ Data exported successfully!');
+
         } catch (error) {
             console.error('Error exporting data:', error);
-            return null;
+            alert('❌ Failed to export data: ' + error.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -180,93 +200,6 @@ function AdminDashboard() {
             6: 'Closed'
         };
         return statusMap[statCode] || 'Unknown';
-    };
-
-    const handlePurgeData = async () => {
-        if (!purgeOption) {
-            alert('Please select a purge option');
-            return;
-        }
-
-        const confirmPurge = window.confirm(
-            `⚠️ Are you sure you want to purge data older than ${purgeOption}? This action cannot be undone. Data will be exported before deletion.`
-        );
-
-        if (!confirmPurge) return;
-
-        try {
-            // Calculate the date threshold
-            const now = new Date();
-            let startDate;
-
-            switch (purgeOption) {
-                case '1month':
-                    startDate = new Date(now.setMonth(now.getMonth() - 1));
-                    break;
-                case '3months':
-                    startDate = new Date(now.setMonth(now.getMonth() - 3));
-                    break;
-                case '6months':
-                    startDate = new Date(now.setMonth(now.getMonth() - 6));
-                    break;
-                case '1year':
-                    startDate = new Date(now.setFullYear(now.getFullYear() - 1));
-                    break;
-                default:
-                    return;
-            }
-
-            // Export data before purging
-            const exportData = await exportComplaintsData(startDate.toISOString());
-
-            if (exportData && exportData.length > 0) {
-                const ws = XLSX.utils.json_to_sheet(exportData);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, 'Purged Concerns');
-                XLSX.writeFile(wb, `Purged_Concerns_${new Date().toISOString().split('T')[0]}.xlsx`);
-                console.log('Export completed successfully');
-            } else {
-                console.log('No data to export');
-            }
-
-            // Delete using RPC to bypass any RLS issues
-            console.log('Deleting data older than:', startDate.toISOString());
-
-            // Delete comments first (foreign key constraint)
-            const { data: deletedComments, error: commentsError } = await supabase
-                .rpc('purge_old_comments', {
-                    p_cutoff_date: startDate.toISOString()
-                });
-
-            if (commentsError) {
-                console.error('Error deleting comments:', commentsError);
-                alert(`Failed to purge comments: ${commentsError.message}`);
-                return;
-            }
-
-            console.log('Comments deleted:', deletedComments);
-
-            // Delete complaints
-            const { data: deletedComplaints, error: complaintsError } = await supabase
-                .rpc('purge_old_complaints', {
-                    p_cutoff_date: startDate.toISOString()
-                });
-
-            if (complaintsError) {
-                console.error('Error deleting complaints:', complaintsError);
-                alert(`Failed to purge complaints: ${complaintsError.message}`);
-                return;
-            }
-
-            console.log('Complaints deleted:', deletedComplaints);
-
-            alert('✅ Data purged successfully! ✅ Exported file has been downloaded.');
-            setShowPurgeModal(false);
-            setPurgeOption('');
-        } catch (error) {
-            console.error('Unexpected error during purge:', error);
-            alert('An unexpected error occurred during purge');
-        }
     };
 
     const filteredUsers = users.filter(user =>
@@ -315,10 +248,10 @@ function AdminDashboard() {
                     </div>
                     <div className="col-md-6 text-end">
                         <button
-                            className="btn btn-danger"
-                            onClick={() => setShowPurgeModal(true)}
+                            className="btn btn-success"
+                            onClick={handleExportData}
                         >
-                            🗑️ Purge Data
+                            � Export Data
                         </button>
                     </div>
                 </div>
@@ -452,57 +385,7 @@ function AdminDashboard() {
                 </div>
             </div>
 
-            {/* Purge Data Modal */}
-            {showPurgeModal && (
-                <div className="modal-overlay" onClick={() => setShowPurgeModal(false)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h5 className="modal-title">Purge Data</h5>
-                            <button
-                                className="btn-close"
-                                onClick={() => setShowPurgeModal(false)}
-                            >
-                                X
-                            </button>
-                        </div>
-                        <div className="modal-body">
-                            <p className="text-danger fw-bold">
-                                ⚠️ Warning: This will permanently delete complaints and comments older than the selected period.
-                                Data will be exported before deletion.
-                            </p>
-                            <div className="mb-3">
-                                <label className="form-label">Select Purge Period:</label>
-                                <select
-                                    className="form-select"
-                                    value={purgeOption}
-                                    onChange={(e) => setPurgeOption(e.target.value)}
-                                >
-                                    <option value="">-- Select Period --</option>
-                                    <option value="1month">Older than 1 Month</option>
-                                    <option value="3months">Older than 3 Months</option>
-                                    <option value="6months">Older than 6 Months</option>
-                                    <option value="1year">Older than 1 Year</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div className="modal-footer">
-                            <button
-                                className="btn btn-secondary"
-                                onClick={() => setShowPurgeModal(false)}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                className="btn btn-danger"
-                                onClick={handlePurgeData}
-                                disabled={!purgeOption}
-                            >
-                                Purge Data
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+
         </div>
     );
 }
