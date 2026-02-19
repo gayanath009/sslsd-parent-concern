@@ -30,9 +30,40 @@ function Complaints() {
     const [section, setSection] = useState('');
     const [complaintTypesList, setComplaintTypesList] = useState([]);
     const [contactError, setContactError] = useState('');
+    const [admissionError, setAdmissionError] = useState('');
 
     // Fetch Complaint Types
 
+
+    const handleAdmissionBlur = async () => {
+        if (!studentNo) {
+            setAdmissionError('');
+            return;
+        }
+
+        try {
+            console.log('Checking admission no:', studentNo);
+            const { data, error } = await supabase
+                .from('admission')
+                .select('admsn_no')
+                .eq('admsn_no', studentNo);
+
+            //console.log('Supabase response - data:', data, '| error:', error);
+
+            if (error) {
+                console.error('Error checking admission no:', error);
+                // If there's a DB error, we won't block the user
+            } else if (!data || data.length === 0) {
+                console.log('No matching admission record found for:', studentNo);
+                setAdmissionError('Invalid Student Admission No');
+            } else {
+                console.log('Valid admission no found:', data);
+                setAdmissionError('');
+            }
+        } catch (error) {
+            console.error('Unexpected error checking admission no:', error);
+        }
+    };
 
     useEffect(() => {
         const fetchComplaintTypes = async () => {
@@ -69,6 +100,11 @@ function Complaints() {
 
         if (contactError || contactNumber.length !== 8) {
             alert('Please enter a valid 8-digit contact number.');
+            return;
+        }
+
+        if (admissionError) {
+            alert('Please enter a valid Student Admission No.');
             return;
         }
 
@@ -257,12 +293,17 @@ function Complaints() {
                                             </label>
                                             <input
                                                 type="text"
-                                                className="form-control"
+                                                className={`form-control ${admissionError ? 'is-invalid' : ''}`}
                                                 id="studentNo"
                                                 value={studentNo}
-                                                onChange={(e) => setStudentNo(e.target.value)}
+                                                onChange={(e) => {
+                                                    setStudentNo(e.target.value);
+                                                    setAdmissionError('');
+                                                }}
+                                                onBlur={handleAdmissionBlur}
                                                 required
                                             />
+                                            {admissionError && <div className="invalid-feedback">{admissionError}</div>}
                                         </div>
                                         <div className="col-md-6 mb-3">
                                             <label htmlFor="grade" className="form-label fw-semibold">

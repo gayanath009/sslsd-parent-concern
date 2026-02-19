@@ -248,10 +248,16 @@ function AdminDashboard() {
                     </div>
                     <div className="col-md-6 text-end">
                         <button
+                            className="btn btn-warning me-2"
+                            onClick={() => navigate('/update-admission')}
+                        >
+                            🎓 Update Admission Nos
+                        </button>
+                        <button
                             className="btn btn-success"
                             onClick={handleExportData}
                         >
-                            � Export Data
+                            📊 Export Data
                         </button>
                     </div>
                 </div>
