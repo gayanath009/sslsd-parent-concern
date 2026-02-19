@@ -19,7 +19,7 @@ function UpdateAdmission() {
         if (!file) return;
 
         if (!file.name.match(/\.(xlsx|xls)$/i)) {
-            setStatusMessage('❌ Please select a valid Excel file (.xlsx or .xls)');
+            setStatusMessage('❌ Please select a valid Excel file (only .xlsx or .xls)');
             setStatusType('error');
             return;
         }
