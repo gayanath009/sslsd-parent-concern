@@ -6,6 +6,7 @@ import UpdatePassword from './Login/UpdatePassword';
 import Dashboard from './Dashboard/Dashboard';
 import Complaints from './Complaints/Complaints';
 import ProtectedRoute from './components/ProtectedRoute';
+import UpdateAdmission from './Dashboard/UpdateAdmission';
 
 function App() {
   return (
@@ -39,6 +40,10 @@ function App() {
               </ProtectedRoute>
             }
           /> */}
+          <Route
+            path="/update-admission"
+            element={<UpdateAdmission />}
+          />
         </Routes>
       </Router>
     </UserProvider>

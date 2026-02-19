@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../SupabaseClient';
 import * as XLSX from 'xlsx';
@@ -13,6 +13,44 @@ function UpdateAdmission() {
     const [isUploading, setIsUploading] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
     const [statusType, setStatusType] = useState(''); // 'success' | 'error' | 'info'
+    const [authChecked, setAuthChecked] = useState(false);
+
+    // Auth + role guard — runs on mount
+    useEffect(() => {
+        const checkAuth = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                navigate('/login');
+                return;
+            }
+
+            // Verify the logged-in user is an admin
+            const { data: userRecord } = await supabase
+                .from('appusers')
+                .select('role')
+                .eq('email', session.user.email)
+                .maybeSingle();
+
+            if (!userRecord || userRecord.role !== 'admin') {
+                navigate('/dashboard');
+                return;
+            }
+
+            setAuthChecked(true);
+        };
+        checkAuth();
+    }, [navigate]);
+
+    // Show spinner while verifying auth
+    if (!authChecked) {
+        return (
+            <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '100vh' }}>
+                <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        );
+    }
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
