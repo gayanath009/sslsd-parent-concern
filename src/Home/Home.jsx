@@ -26,7 +26,6 @@ function Home() {
                   Raise parent concerns here.
                   <br />
                   Sign in to get started and manage your submissions
-                  or post it annomynously.
                 </p>
                 <div className="text-center">
                   {/* <button className="btn btn-primary btn-lg px-5" onClick={taketoSignIn}>
