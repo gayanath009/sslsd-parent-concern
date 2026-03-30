@@ -81,7 +81,7 @@ function BoardMemberDashboard() {
     const calculateStats = (data) => {
         const stats = {
             new: data.filter(c => c.stat_code === 3).length,
-            responded: data.filter(c => c.stat_code === 2).length,
+            responded: data.filter(c => c.stat_code === 2 || c.stat_code === 7 || c.stat_code === 9).length,
             open: data.filter(c => c.stat_code === 4 || c.stat_code === 6).length,
             closed: data.filter(c => c.stat_code === 5).length
         };
@@ -115,7 +115,9 @@ function BoardMemberDashboard() {
 
     const filteredComplaints = complaints.filter(complaint => {
         const matchesFilter = filter === 'all' ? true :
-            (filter === 4 ? (complaint.stat_code === 4 || complaint.stat_code === 6) : complaint.stat_code === filter);
+            (filter === 4 ? (complaint.stat_code === 4 || complaint.stat_code === 6) :
+                (filter === 'responded' ? (complaint.stat_code === 2 || complaint.stat_code === 7 || complaint.stat_code === 9) :
+                    complaint.stat_code === filter));
         const matchesSearch =
             complaint.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             complaint.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -220,16 +222,21 @@ function BoardMemberDashboard() {
             case 1:
                 return <span className="badge status-badge" style={{ backgroundColor: '#219ebc' }}>Initiated By Parent</span>;
             case 2:
-                return <span className="badge status-badge" style={{ backgroundColor: '#75B06F' }}>Responded by Parent Representative</span>;
+            case 9:
+                return <span className="badge status-badge" style={{ backgroundColor: '#E5BA41' }}>Open</span>;
             case 3:
-                return <span className="badge status-badge" style={{ backgroundColor: '#C47BE4' }}>With Principal</span>;
+                return <span className="badge status-badge" style={{ backgroundColor: '#C47BE4' }}>Forwarded to Principal</span>;
+            // case 4:
+            // case 6:
+            //     return <span className="badge status-badge" style={{ backgroundColor: '#E5BA41' }}>Open</span>;
+            //case 5:
             case 4:
             case 6:
                 return <span className="badge status-badge" style={{ backgroundColor: '#E5BA41' }}>Open</span>;
             case 5:
                 return <span className="badge status-badge" style={{ backgroundColor: '#007E6E' }}>Closed</span>;
-            default:
-                return null;
+            case 7:
+                return <span className="badge status-badge" style={{ backgroundColor: '#007E6E' }}>Closed By PR</span>;
         }
     };
 
@@ -314,10 +321,10 @@ function BoardMemberDashboard() {
                                         All
                                     </button>
                                     <button
-                                        className={`btn w-100 ${filter === 2 ? 'btn-primary' : 'btn-outline-primary'}`}
-                                        onClick={() => setFilter(2)}
+                                        className={`btn w-100 ${filter === 'responded' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        onClick={() => setFilter('responded')}
                                     >
-                                        Responded By PA
+                                        Responded By PR
                                     </button>
                                     <button
                                         className={`btn w-100 ${filter === 3 ? 'btn-primary' : 'btn-outline-primary'}`}

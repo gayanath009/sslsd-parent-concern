@@ -88,7 +88,7 @@ function PrincipalDashboard() {
         const stats = {
             //total: data.length,
             new: data.filter(c => c.stat_code === 3).length,
-            responded: data.filter(c => c.stat_code === 2).length,
+            responded: data.filter(c => c.stat_code === 2 || c.stat_code === 7 || c.stat_code === 9).length,
             open: data.filter(c => c.stat_code === 4 || c.stat_code === 6).length,
             closed: data.filter(c => c.stat_code === 5).length
 
@@ -184,7 +184,9 @@ function PrincipalDashboard() {
 
     const filteredComplaints = complaints.filter(complaint => {
         const matchesFilter = filter === 'all' ? true :
-            (filter === 4 ? (complaint.stat_code === 4 || complaint.stat_code === 6) : complaint.stat_code === filter);
+            (filter === 4 ? (complaint.stat_code === 4 || complaint.stat_code === 6) :
+                (filter === 'responded' ? (complaint.stat_code === 2 || complaint.stat_code === 7 || complaint.stat_code === 9) :
+                    complaint.stat_code === filter));
         const matchesSearch =
             complaint.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             complaint.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -289,7 +291,7 @@ function PrincipalDashboard() {
             case 1:
                 return <span className="badge status-badge" style={{ backgroundColor: '#219ebc' }}>Initiated By Parent</span>;
             case 2:
-                return <span className="badge status-badge" style={{ backgroundColor: '#75B06F' }}>Responded by Parent Representative</span>;
+                return <span className="badge status-badge" style={{ backgroundColor: '#75B06F' }}>Responded by PR</span>;
             case 3:
                 return <span className="badge status-badge" style={{ backgroundColor: '#C47BE4' }}>New</span>;
             case 4:
@@ -297,6 +299,8 @@ function PrincipalDashboard() {
                 return <span className="badge status-badge" style={{ backgroundColor: '#E5BA41' }}>Open</span>;
             case 5:
                 return <span className="badge status-badge" style={{ backgroundColor: '#007E6E' }}>Closed</span>;
+            case 7:
+                return <span className="badge status-badge" style={{ backgroundColor: '#007E6E' }}>Closed By PR</span>;
             default:
                 return null;
         }
@@ -385,10 +389,10 @@ function PrincipalDashboard() {
                                         All
                                     </button>
                                     <button
-                                        className={`btn w-100 ${filter === 2 ? 'btn-primary' : 'btn-outline-primary'}`}
-                                        onClick={() => setFilter(2)}
+                                        className={`btn w-100 ${filter === 'responded' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        onClick={() => setFilter('responded')}
                                     >
-                                        Responded By PA
+                                        Responded By PR
                                     </button>
                                     <button
                                         className={`btn w-100 ${filter === 3 ? 'btn-primary' : 'btn-outline-primary'}`}
@@ -661,7 +665,7 @@ function PrincipalDashboard() {
                             ) : comments.length > 0 ? (
                                 <ul className="list-group list-group-flush">
                                     {comments.map((comment) => {
-                                        const isParentReply = selectedComplaint.stat_code === 6 && comment.appusers?.role === 'parent';
+                                        const isParentReply = (selectedComplaint.stat_code === 4 || selectedComplaint.stat_code === 6 || selectedComplaint.stat_code === 5) && comment.appusers?.role === 'parent';
                                         return (
                                             <li key={comment.comment_id} className="list-group-item" style={{ backgroundColor: isParentReply ? '#fff3cd' : 'transparent' }}>
                                                 <div className="d-flex justify-content-between">

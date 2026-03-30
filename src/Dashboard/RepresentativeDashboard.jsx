@@ -99,10 +99,9 @@ function RepresentativeDashboard() {
         const assignedComplaints = data.filter(c => c.cmplt_with_userid === userId);
         const stats = {
             assigned: assignedComplaints.filter(c => c.stat_code === 1).length,
-            reviewed: assignedComplaints.filter(c => c.stat_code === 2).length,
+            open: assignedComplaints.filter(c => c.stat_code === 2 || c.stat_code === 9).length,
             forwarded: assignedComplaints.filter(c => c.stat_code === 3).length,
-            //open: assignedComplaints.filter(c => c.stat_code === 'open').length,
-            //closed: assignedComplaints.filter(c => c.stat_code === 'closed').length,
+            closed: assignedComplaints.filter(c => c.stat_code === 9).length,
             total: data.length
         };
         setStats(stats);
@@ -119,7 +118,7 @@ function RepresentativeDashboard() {
         try {
             const { data, error } = await supabase
                 .from('comment')
-                .select('*, appusers(name)')
+                .select('*, appusers(name, role)')
                 .eq('complaint_id', complaint.complaint_id)
                 .order('created_at', { ascending: true });
 
@@ -150,7 +149,7 @@ function RepresentativeDashboard() {
                     complaint_id: complaintId,
                     user_id: userId,
                     comment_text: responseText,
-                    visible_to: 'parent',
+                    //visible_to: 'parent',
                     created_at: new Date().toISOString()
                 });
 
@@ -180,6 +179,50 @@ function RepresentativeDashboard() {
             alert('❌ An unexpected error occurred', err);
             console.error('Unexpected error:', err);
 
+        }
+    };
+
+    const closeComplaint = async (complaintId) => {
+        if (!responseText.trim()) {
+            alert('Please enter a reply message');
+            return;
+        }
+
+        try {
+            // Insert comment into comment table
+            const { error } = await supabase
+                .from('comment')
+                .insert({
+                    complaint_id: complaintId,
+                    user_id: userId,
+                    comment_text: responseText,
+                    visible_to: 'parent',
+                    created_at: new Date().toISOString()
+                });
+
+            if (error) {
+                alert(' ❌ Failed to send reply to parent');
+            } else {
+                // Update complaint status to 7 (Closed)
+                const { error: updateError } = await supabase
+                    .rpc('update_complaint_status', {
+                        p_complaint_id: complaintId,
+                        p_stat_code: 7
+                    });
+
+                if (updateError) {
+                    console.error('❌ Error updating status:', updateError);
+                    alert('Reply added, but failed to update status: ' + updateError.message);
+                } else {
+                    alert('✅ Complaint closed successfully!');
+                    setResponseText('');
+                    setShowReplyModal(false);
+                    fetchComplaints();
+                }
+            }
+        } catch (err) {
+            alert('❌ An unexpected error occurred', err);
+            console.error('Unexpected error:', err);
         }
     };
 
@@ -246,6 +289,7 @@ function RepresentativeDashboard() {
         const matchesFilter =
             filter === 'all' ||
             (filter === '1' && complaint.cmplt_with_userid === userId) ||
+            (filter === 'open' && (complaint.stat_code === 2 || complaint.stat_code === 9)) ||
             complaint.stat_code === filter;
 
         const matchesSearch =
@@ -275,14 +319,23 @@ function RepresentativeDashboard() {
             case 1:
                 return <span className="badge status-badge" style={{ backgroundColor: '#219ebc' }}>Initiated By Parent</span>;
             case 2:
-                return <span className="badge status-badge" style={{ backgroundColor: '#75B06F' }}>Responded by Parent Representative</span>;
+            case 9:
+                return <span className="badge status-badge" style={{ backgroundColor: '#E5BA41' }}>Open</span>;
             case 3:
                 return <span className="badge status-badge" style={{ backgroundColor: '#C47BE4' }}>Forwarded to Principal</span>;
+            // case 4:
+            // case 6:
+            //     return <span className="badge status-badge" style={{ backgroundColor: '#E5BA41' }}>Open</span>;
+            //case 5:
             case 4:
             case 6:
                 return <span className="badge status-badge" style={{ backgroundColor: '#E5BA41' }}>Open</span>;
             case 5:
                 return <span className="badge status-badge" style={{ backgroundColor: '#007E6E' }}>Closed</span>;
+            case 7:
+                return <span className="badge status-badge" style={{ backgroundColor: '#007E6E' }}>Closed By PR</span>;
+
+
             default:
                 return null;
         }
@@ -327,7 +380,7 @@ function RepresentativeDashboard() {
             <div className="container-fluid py-4">
                 {/* Statistics Cards */}
                 <div className="row g-4 mb-4">
-                    <div className="col-md-6 col-lg-4">
+                    <div className="col-md-6 col-lg-3">
                         <div className="stat-card stat-assigned">
                             <div className="stat-icon">📋</div>
                             <div className="stat-details">
@@ -336,16 +389,25 @@ function RepresentativeDashboard() {
                             </div>
                         </div>
                     </div>
-                    <div className="col-md-6 col-lg-4">
+                    <div className="col-md-6 col-lg-3">
                         <div className="stat-card stat-reviewed">
-                            <div className="stat-icon">👁️</div>
+                            <div className="stat-icon">📂</div>
                             <div className="stat-details">
-                                <h3>{stats.reviewed}</h3>
-                                <p>Responded By PA</p>
+                                <h3>{stats.open}</h3>
+                                <p>Open</p>
                             </div>
                         </div>
                     </div>
-                    <div className="col-md-6 col-lg-4">
+                    <div className="col-md-6 col-lg-3">
+                        <div className="stat-card stat-reviewed">
+                            <div className="stat-icon">✅</div>
+                            <div className="stat-details">
+                                <h3>{stats.closed}</h3>
+                                <p>Closed</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-6 col-lg-3">
                         <div className="stat-card stat-forwarded">
                             <div className="stat-icon">▶️</div>
                             <div className="stat-details">
@@ -356,24 +418,7 @@ function RepresentativeDashboard() {
                     </div>
 
 
-                    {/* <div className="col-md-6 col-lg-3">
-                        <div className="stat-card stat-open">
-                            <div className="stat-icon">📂</div>
-                            <div className="stat-details">
-                                <h3>{stats.open}</h3>
-                                <p>Open</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="col-md-6 col-lg-3">
-                        <div className="stat-card stat-closed">
-                            <div className="stat-icon">✅</div>
-                            <div className="stat-details">
-                                <h3>{stats.closed}</h3>
-                                <p>Closed</p>
-                            </div>
-                        </div>
-                    </div> */}
+
                 </div>
 
                 {/* Filters and Search */}
@@ -395,12 +440,17 @@ function RepresentativeDashboard() {
                                         New
                                     </button>
                                     <button
-                                        className={`btn w-100 ${filter === 2 ? 'btn-primary' : 'btn-outline-primary'}`}
-                                        onClick={() => setFilter(2)}
+                                        className={`btn w-100 ${filter === 'open' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        onClick={() => setFilter('open')}
                                     >
-                                        Responded By PA
+                                        Open
                                     </button>
-
+                                    <button
+                                        className={`btn w-100 ${filter === 7 ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        onClick={() => setFilter(7)}
+                                    >
+                                        Closed
+                                    </button>
                                     <button
                                         className={`btn w-100 ${filter === 3 ? 'btn-primary' : 'btn-outline-primary'}`}
                                         onClick={() => setFilter(3)}
@@ -464,50 +514,45 @@ function RepresentativeDashboard() {
                                                 </div>
                                                 <div className="d-flex gap-2 flex-wrap">
                                                     {getStatusBadge(complaint.stat_code)}
-                                                    {(complaint.stat_code === 2 || complaint.stat_code === 4 || complaint.stat_code === 5 || complaint.stat_code === 6) && (
+                                                    {(complaint.stat_code === 2 || complaint.stat_code === 4 || complaint.stat_code === 5 || complaint.stat_code === 6 || complaint.stat_code === 7 || complaint.stat_code === 9) && (
                                                         <button
                                                             className="btn btn-sm text-white"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 handleViewComments(complaint);
                                                             }}
-                                                            style={{ backgroundColor: '#6f42c1' }}
+                                                            style={{ backgroundColor: '#4488ff' }}
                                                         >
                                                             View Response
                                                         </button>
                                                     )}
 
+                                                    {(complaint.stat_code === 1 || complaint.stat_code === 2 || complaint.stat_code === 9) && complaint.user_id && (
+                                                        <button
+                                                            className="btn btn-sm text-white"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedComplaint(complaint);
+                                                                setShowReplyModal(true);
+                                                            }}
+                                                            style={{ backgroundColor: '#6f42c1' }}
+                                                        >
+                                                            Reply to Parent
+                                                        </button>
+                                                    )}
+
                                                     {complaint.stat_code === 1 && (
-
-                                                        <div className="d-flex gap-2 flex-wrap">
-
-                                                            {complaint.user_id && (
-                                                                <button
-                                                                    className="btn btn-sm text-white"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setSelectedComplaint(complaint);
-                                                                        setShowReplyModal(true);
-                                                                    }}
-                                                                    style={{ backgroundColor: '#6f42c1' }}
-                                                                >
-                                                                    Reply to Parent
-                                                                </button>
-                                                            )}
-
-
-                                                            <button
-                                                                className="btn btn-sm text-white"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setSelectedComplaint(complaint);
-                                                                    setShowForwardModal(true);
-                                                                }}
-                                                                style={{ backgroundColor: '#344386' }}
-                                                            >
-                                                                Forward to Principal
-                                                            </button>
-                                                        </div>
+                                                        <button
+                                                            className="btn btn-sm text-white"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedComplaint(complaint);
+                                                                setShowForwardModal(true);
+                                                            }}
+                                                            style={{ backgroundColor: '#344386' }}
+                                                        >
+                                                            Forward to Principal
+                                                        </button>
                                                     )}
 
                                                 </div>
@@ -641,9 +686,18 @@ function RepresentativeDashboard() {
                                         Cancel
                                     </button>
                                     <button
-                                        className="btn btn-success"
-                                        onClick={() => replyToParent(selectedComplaint.complaint_id)}                                    >
-                                        📧 Send Response
+                                        className="btn text-dark fw-bold"
+                                        style={{ backgroundColor: '#f0c808' }}
+                                        onClick={() => replyToParent(selectedComplaint.complaint_id)}
+                                    >
+                                        � Keep Open
+                                    </button>
+                                    <button
+                                        className="btn text-white fw-bold"
+                                        style={{ backgroundColor: '#28a745' }}
+                                        onClick={() => closeComplaint(selectedComplaint.complaint_id)}
+                                    >
+                                        ✅ Close
                                     </button>
                                 </div>
                             </div>
@@ -738,24 +792,32 @@ function RepresentativeDashboard() {
                                         </div>
                                     ) : comments.length > 0 ? (
                                         <ul className="list-group list-group-flush">
-                                            {comments.map((comment) => (
-                                                <li key={comment.comment_id} className="list-group-item">
-                                                    <div className="d-flex justify-content-between">
-                                                        <strong className="mb-1">{comment.appusers?.name || 'Unknown'}</strong>
-                                                        <small className="text-muted">
-                                                            {new Date(comment.created_at).toLocaleString()}
-                                                        </small>
-                                                    </div>
-                                                    <div className="mb-3">
-                                                        <div
-                                                            className="p-3 border rounded bg-light"
-                                                            style={{ maxHeight: '300px', overflowY: 'auto' }}
-                                                        >
-                                                            {comment.comment_text}
+                                            {comments.map((comment) => {
+                                                const isParentReply = (selectedComplaint.stat_code === 2 || selectedComplaint.stat_code === 7 || selectedComplaint.stat_code === 9) && comment.visible_to === 'PA';
+                                                return (
+                                                    <li key={comment.comment_id} className="list-group-item" style={{ backgroundColor: isParentReply ? '#fff3cd' : 'transparent' }}>
+                                                        <div className="d-flex justify-content-between">
+                                                            <div>
+                                                                <strong className="mb-1">{comment.appusers?.name || 'Unknown'}</strong>
+                                                                {isParentReply && (
+                                                                    <span className="badge bg-warning text-dark ms-2">Parent Reply</span>
+                                                                )}
+                                                            </div>
+                                                            <small className="text-muted">
+                                                                {new Date(comment.created_at).toLocaleString()}
+                                                            </small>
                                                         </div>
-                                                    </div>
-                                                </li>
-                                            ))}
+                                                        <div className="mb-3">
+                                                            <div
+                                                                className={`p-3 border rounded ${isParentReply ? 'bg-white' : 'bg-light'}`}
+                                                                style={{ maxHeight: '300px', overflowY: 'auto' }}
+                                                            >
+                                                                {comment.comment_text}
+                                                            </div>
+                                                        </div>
+                                                    </li>
+                                                );
+                                            })}
                                         </ul>
                                     ) : (
                                         <p className="text-muted text-center my-3">No responses found.</p>

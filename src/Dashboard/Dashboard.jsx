@@ -205,7 +205,7 @@ function Dashboard() {
           complaint_id: selectedComplaint.complaint_id,
           user_id: userId,
           comment_text: responseBackText,
-          visible_to: 'principal',
+          visible_to: selectedComplaint.stat_code === 2 ? 'PA' : 'principal',
           created_at: new Date().toISOString()
         });
 
@@ -215,11 +215,14 @@ function Dashboard() {
         return;
       }
 
-      // 2. Update status to 6 using RPC
+      // 2. Determine new status code based on current stat_code
+      // stat_code 4 (Open) -> 6, stat_code 2 (Responded by PA) -> 9
+      const newStatCode = selectedComplaint.stat_code === 2 ? 9 : 6;
+
       const { error: updateError } = await supabase
         .rpc('update_complaint_status', {
           p_complaint_id: selectedComplaint.complaint_id,
-          p_stat_code: 6
+          p_stat_code: newStatCode
         });
 
       if (updateError) {
@@ -228,7 +231,7 @@ function Dashboard() {
         // Fallback: Try direct update
         const { error: directUpdateError } = await supabase
           .from('complaint')
-          .update({ stat_code: 6 })
+          .update({ stat_code: newStatCode })
           .eq('complaint_id', selectedComplaint.complaint_id);
 
         if (directUpdateError) {
@@ -317,6 +320,14 @@ function Dashboard() {
               </button>
             </div>
 
+            {/* Notice for parents */}
+            <div className="alert alert-warning mt-4 d-flex align-items-start" role="alert" style={{ fontSize: '0.95rem', fontWeight: '500' }}>
+              <span style={{ fontSize: '1.3rem', marginRight: '10px' }}>📢</span>
+              <p className="mb-0">
+                After submitting your concern, please click on the respective complaint status to access the responses provided by the school.
+              </p>
+            </div>
+
             {/* Complaints List Section */}
             <div className="card shadow-sm">
               <div className="bg-history">
@@ -356,7 +367,7 @@ function Dashboard() {
                       </div>
 
                       <div className="d-flex align-items-center gap-2 flex-wrap">
-                        {complaint.stat_code === 4 && (
+                        {(complaint.stat_code === 4 || complaint.stat_code === 2) && (
                           <button
                             className="btn btn-sm btn-outline-primary"
                             onClick={(e) => {
