@@ -173,7 +173,7 @@ function Dashboard() {
     try {
       const { data, error } = await supabase
         .from('comment') // stored in 'comment' table based on request
-        .select('*, appusers(name)')
+        .select('*, appusers(name, role)')
         .eq('complaint_id', complaintId)
         .order('created_at', { ascending: true });
 
@@ -420,27 +420,38 @@ function Dashboard() {
                 </div>
               ) : comments.length > 0 ? (
                 <ul className="list-group list-group-flush">
-                  {comments.map((comment) => (
-                    <li key={comment.comment_id} className="list-group-item">
-                      <div className="d-flex justify-content-between">
-                        <strong className="mb-1">{comment.appusers?.name || 'Unknown'}</strong>
-                        <small className="text-muted">
-                          {new Date(comment.created_at).toLocaleString()}
-                        </small>
-                      </div>
-                      {/* <p className="mb-1">{comment.comment_text}</p> */}
-
-                      <div className="mb-3">
-
-                        <div
-                          className="p-3 border rounded bg-light"
-                          style={{ maxHeight: '300px', overflowY: 'auto' }}
-                        >
-                          {comment.comment_text}
+                  {comments.map((comment) => {
+                    const role = comment.appusers?.role;
+                    const isPrincipal = role === 'principal';
+                    const isRepresentative = role === 'representative';
+                    const bgColor = isPrincipal ? '#d4edda' : isRepresentative ? '#e8f5e9' : 'transparent';
+                    const roleBadge = isPrincipal ? 'Principal' : isRepresentative ? 'Parent Representative' : null;
+                    const badgeBg = isPrincipal ? '#28a745' : isRepresentative ? '#75B06F' : '';
+                    return (
+                      <li key={comment.comment_id} className="list-group-item" style={{ backgroundColor: bgColor }}>
+                        <div className="d-flex justify-content-between">
+                          <div>
+                            <strong className="mb-1">{comment.appusers?.name || 'Unknown'}</strong>
+                            {roleBadge && (
+                              <span className="badge ms-2" style={{ backgroundColor: badgeBg, color: 'white' }}>{roleBadge}</span>
+                            )}
+                          </div>
+                          <small className="text-muted">
+                            {new Date(comment.created_at).toLocaleString()}
+                          </small>
                         </div>
-                      </div>
-                    </li>
-                  ))}
+
+                        <div className="mb-3">
+                          <div
+                            className={`p-3 border rounded ${isPrincipal || isRepresentative ? 'bg-white' : 'bg-light'}`}
+                            style={{ maxHeight: '300px', overflowY: 'auto' }}
+                          >
+                            {comment.comment_text}
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : (
                 <p className="text-muted text-center my-3">No responses yet.</p>
