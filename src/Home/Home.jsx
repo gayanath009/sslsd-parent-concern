@@ -21,11 +21,11 @@ function Home() {
                 <div className="text-center mb-3">
                   <img src={sslsdLogo} alt="SSLSD Logo" style={{ width: '200px', height: 'auto' }} />
                 </div>
-                <h1 className="card-title text-center mb-4">Welcome to SSLSD Parent Concerns Portal</h1>
+                <h1 className="card-title text-center mb-4">Welcome to SSLSD Parent Communication Portal</h1>
                 <p className="card-text text-center mb-4">
                   Raise parent concerns here.
                   <br />
-                  Sign in to get started and manage your submissions
+                  Sign in to get started and manage your submissions.
                 </p>
                 <div className="text-center">
                   {/* <button className="btn btn-primary btn-lg px-5" onClick={taketoSignIn}>

@@ -129,7 +129,7 @@ function Login() {
     <div className='login_page'>
       <nav className="navbar navbar-expand-lg navbar-dark bg-gradient">
         <div className="container-fluid">
-          <span className="navbar-brand mb-0 h1">SSLSD Parent Concerns Portal</span>
+          <span className="navbar-brand mb-0 h1">SSLSD Parent Communication Portal</span>
           <a href="/" className='btn btn-outline-light btn-sm'>Home</a>
         </div>
       </nav>
@@ -144,7 +144,7 @@ function Login() {
                 </div>
                 <h3 className="card-title text-center mb-4">
                   {/* {isSignUp ? 'Create Account' : 'Welcome Back'} */}
-                  SSLSD Parent Concerns Portal
+                  SSLSD Parent Communication Portal
                 </h3>
                 {/* <h5 className="text-center mb-4 text-muted">
                   {isForgotPassword ? 'Reset Password' : (isSignUp ? 'Create Account' : 'Welcome Back')}
