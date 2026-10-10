@@ -1,0 +1,225 @@
+/* Concern Analytics Styles */
+
+.analytics-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #3d6a69 0%, #599d9c 50%, #4a8685 100%);
+    color: #2c3e50;
+    padding-bottom: 3rem;
+}
+
+.analytics-navbar {
+    background: #006f3c !important;
+    box-shadow: 0 4px 15px rgba(0, 70, 38, 0.4);
+    padding: 0.85rem 1.5rem;
+}
+
+.back-btn {
+    border-radius: 8px;
+    padding: 6px 16px;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    color: white;
+    transition: all 0.25s ease;
+}
+
+.back-btn:hover {
+    background: white;
+    color: #006f3c;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Card base */
+.analytics-card {
+    background: #ffffff;
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.analytics-card:hover {
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+}
+
+.analytics-card-header {
+    background: #f8fafc;
+    border-bottom: 1px solid #eef2f6;
+    padding: 1.1rem 1.4rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.analytics-card-header h5 {
+    margin: 0;
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Metric / Stat Cards */
+.kpi-card {
+    background: white;
+    border-radius: 14px;
+    padding: 1.3rem;
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    border-left: 5px solid;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.kpi-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+}
+
+.kpi-total { border-left-color: #3b82f6; }
+.kpi-new { border-left-color: #219ebc; }
+.kpi-forwarded { border-left-color: #9b5de5; }
+.kpi-open { border-left-color: #e5ba41; }
+.kpi-closed { border-left-color: #10b981; }
+
+.kpi-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+}
+
+.kpi-info h3 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.kpi-info p {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Time range selector pill buttons */
+.time-pill-btn {
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    border: 1px solid #cbd5e1;
+    background: white;
+    color: #475569;
+}
+
+.time-pill-btn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+.time-pill-btn.active {
+    background: #006f3c;
+    border-color: #006f3c;
+    color: white;
+    box-shadow: 0 3px 10px rgba(0, 111, 60, 0.3);
+}
+
+/* SVG Chart Styles */
+.chart-svg {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+}
+
+.chart-grid-line {
+    stroke: #e2e8f0;
+    stroke-dasharray: 4 4;
+}
+
+.chart-axis-text {
+    font-size: 11px;
+    fill: #64748b;
+    font-family: inherit;
+}
+
+.chart-bar-rect {
+    transition: all 0.25s ease;
+    cursor: pointer;
+}
+
+.chart-bar-rect:hover {
+    filter: brightness(1.15);
+    opacity: 0.9;
+}
+
+.chart-tooltip {
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+/* Donut chart legend */
+.legend-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.8rem;
+    border-radius: 10px;
+    background: #f8fafc;
+    margin-bottom: 0.5rem;
+    transition: background 0.2s ease;
+}
+
+.legend-item:hover {
+    background: #f1f5f9;
+}
+
+.legend-color-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+}
+
+/* Progress bar inside priority stats */
+.priority-progress-bar {
+    height: 8px;
+    border-radius: 4px;
+    background: #e2e8f0;
+    overflow: hidden;
+}
+
+.priority-progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+/* Status badges */
+.badge-status-new { background-color: #219ebc; }
+.badge-status-fwd { background-color: #9b5de5; }
+.badge-status-open { background-color: #e5ba41; color: #1e293b; }
+.badge-status-closed { background-color: #10b981; }
+
+/* Table enhancements */
+.analytics-table th {
+    background-color: #f8fafc;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #475569;
+    font-weight: 700;
+}
+
+.analytics-table td {
+    vertical-align: middle;
+    font-size: 0.92rem;
+}

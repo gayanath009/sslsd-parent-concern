@@ -267,6 +267,13 @@ function BoardMemberDashboard() {
                 <div className="container-fluid">
                     <span className="navbar-brand mb-0 h1">👥 Board Member Dashboard</span>
                     <div className="d-flex align-items-center gap-3">
+                        <button
+                            onClick={() => navigate('/analytics')}
+                            className="btn btn-light text-success fw-bold d-flex align-items-center gap-2 shadow-sm"
+                            style={{ borderRadius: '8px' }}
+                        >
+                            📈 <span>Status Analytics & Graphs</span>
+                        </button>
                         <span className="text-white">Welcome, {name}</span>
                         <button onClick={handleLogout} className='btn btn-outline-light logout-btn'>
                             Logout

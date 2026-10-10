@@ -108,6 +108,12 @@ function PrincipalDashboard() {
             return;
         }
 
+        const confirmMessage = action === '4'
+            ? 'Are you sure you want to keep open the concern?'
+            : 'Are you sure you want to close the concern?';
+        const isConfirmed = window.confirm(confirmMessage);
+        if (!isConfirmed) return;
+
         try {
             // Insert comment
             const { error: commentError } = await supabase
@@ -335,6 +341,13 @@ function PrincipalDashboard() {
                 <div className="container-fluid">
                     <span className="navbar-brand mb-0 h1">👩‍🏫 Principal Dashboard</span>
                     <div className="d-flex align-items-center gap-3">
+                        <button
+                            onClick={() => navigate('/analytics')}
+                            className="btn btn-light text-success fw-bold d-flex align-items-center gap-2 shadow-sm"
+                            style={{ borderRadius: '8px' }}
+                        >
+                            📈 <span>Status Analytics & Graphs</span>
+                        </button>
                         <span className="text-white">Welcome, {name}</span>
                         <button onClick={handleLogout} className='btn btn-outline-light logout-btn'>
                             Logout

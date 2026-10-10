@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../SupabaseClient';
 import { useUser } from '../context/UserContext';
@@ -141,6 +142,9 @@ function RepresentativeDashboard() {
             return;
         }
 
+        const isConfirmed = window.confirm('Are you sure you want to keep open the concern?');
+        if (!isConfirmed) return;
+
         try {
             // Insert comment into comment table
             const { error } = await supabase
@@ -187,6 +191,9 @@ function RepresentativeDashboard() {
             alert('Please enter a reply message');
             return;
         }
+
+        const isConfirmed = window.confirm('Are you sure you want to close the concern?');
+        if (!isConfirmed) return;
 
         try {
             // Insert comment into comment table
@@ -303,6 +310,106 @@ function RepresentativeDashboard() {
 
         return matchesFilter && matchesSearch && matchesPriority;
     });
+
+    const getStatusText = (statCode) => {
+        switch (statCode) {
+            case 1:
+                return 'Initiated By Parent';
+            case 2:
+            case 9:
+            case 4:
+            case 6:
+                return 'Open';
+            case 3:
+                return 'Forwarded to Principal';
+            case 5:
+                return 'Closed';
+            case 7:
+                return 'Closed By PR';
+            default:
+                return statCode ? String(statCode) : '';
+        }
+    };
+
+    const handleExport = async () => {
+        if (filteredComplaints.length === 0) {
+            alert('No concerns found to export.');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const exportData = [];
+            let runningNo = 1;
+
+            for (const complaint of filteredComplaints) {
+                const { data: comments } = await supabase
+                    .from('comment')
+                    .select('*, appusers(name)')
+                    .eq('complaint_id', complaint.complaint_id)
+                    .order('created_at', { ascending: true });
+
+                const baseData = {
+                    'No': runningNo++,
+                    'Title': complaint.title || '',
+                    'Description': complaint.description || '',
+                    'Parent Name': complaint.user?.name || 'Anonymous',
+                    'Parent Contact Number': complaint.contact_number || '',
+                    'Student Number': complaint.student_no || '',
+                    'Student Name': complaint.student_name || '',
+                    'Grade': complaint.grade || '',
+                    'Section': complaint.section || '',
+                    'Priority': complaint.priority || '',
+                    'Type': complaint.type || '',
+                    'Status': getStatusText(complaint.stat_code),
+                    'Complaint Created Datetime': formatDate(complaint.created_at)
+                };
+
+                if (comments && comments.length > 0) {
+                    comments.forEach((comment, index) => {
+                        exportData.push({
+                            'No': index === 0 ? baseData['No'] : '',
+                            'Title': index === 0 ? baseData['Title'] : '',
+                            'Description': index === 0 ? baseData['Description'] : '',
+                            'Parent Name': index === 0 ? baseData['Parent Name'] : '',
+                            'Parent Contact Number': index === 0 ? baseData['Parent Contact Number'] : '',
+                            'Student Number': index === 0 ? baseData['Student Number'] : '',
+                            'Student Name': index === 0 ? baseData['Student Name'] : '',
+                            'Grade': index === 0 ? baseData['Grade'] : '',
+                            'Section': index === 0 ? baseData['Section'] : '',
+                            'Priority': index === 0 ? baseData['Priority'] : '',
+                            'Type': index === 0 ? baseData['Type'] : '',
+                            'Status': index === 0 ? baseData['Status'] : '',
+                            'Complaint Created Datetime': index === 0 ? baseData['Complaint Created Datetime'] : '',
+                            'Action Taken': comment.comment_text || '',
+                            'Action By': comment.appusers?.name || 'Unknown',
+                            'Action Datetime': formatDate(comment.created_at)
+                        });
+                    });
+                } else {
+                    exportData.push({
+                        ...baseData,
+                        'Action Taken': '',
+                        'Action By': '',
+                        'Action Datetime': ''
+                    });
+                }
+
+                // Add a blank row space between complaints
+                exportData.push({});
+            }
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Concerns");
+            XLSX.writeFile(wb, "Concerns_Export.xlsx");
+        } catch (error) {
+            console.error('Error exporting data:', error);
+            alert('Failed to export data');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const getPriorityBadgeClass = (priority) => {
         switch (priority) {
@@ -425,7 +532,7 @@ function RepresentativeDashboard() {
                 <div className="card filter-card mb-4">
                     <div className="card-body">
                         <div className="row align-items-center">
-                            <div className="col-md-6 mb-3 mb-md-0">
+                            <div className="col-lg-5 col-md-12 mb-3 mb-lg-0">
                                 <div className="btn-group w-100" role="group">
                                     <button
                                         className={`btn w-100 ${filter === 'all' ? 'btn-primary' : 'btn-outline-primary'}`}
@@ -459,7 +566,7 @@ function RepresentativeDashboard() {
                                     </button>
                                 </div>
                             </div>
-                            <div className="col-md-3">
+                            <div className="col-lg-2 col-md-4 mb-3 mb-lg-0">
                                 <select
                                     className="form-select"
                                     value={priorityFilter}
@@ -472,7 +579,7 @@ function RepresentativeDashboard() {
                                     <option value="urgent">Urgent</option>
                                 </select>
                             </div>
-                            <div className="col-md-3">
+                            <div className="col-lg-3 col-md-5 mb-3 mb-lg-0">
                                 <input
                                     type="text"
                                     className="form-control"
@@ -480,6 +587,11 @@ function RepresentativeDashboard() {
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
+                            </div>
+                            <div className="col-lg-2 col-md-3">
+                                <button className="btn btn-primary w-100" onClick={handleExport}>
+                                    📊 Export
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -541,7 +653,7 @@ function RepresentativeDashboard() {
                                                         </button>
                                                     )}
 
-                                                    {complaint.stat_code === 1 && (
+                                                    {(complaint.stat_code === 1 || complaint.stat_code === 9) && (
                                                         <button
                                                             className="btn btn-sm text-white"
                                                             onClick={(e) => {
