@@ -118,7 +118,9 @@ function BoardMemberDashboard() {
             (filter === 4 ? (complaint.stat_code === 4 || complaint.stat_code === 6) :
                 (filter === 'responded' ? (complaint.stat_code === 2 || complaint.stat_code === 7 || complaint.stat_code === 9) :
                     complaint.stat_code === filter));
+        const cleanSearch = searchTerm.trim().replace(/^#/, '');
         const matchesSearch =
+            (cleanSearch && complaint.complaint_id?.toString().includes(cleanSearch)) ||
             complaint.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             complaint.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             complaint.user?.name?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -144,8 +146,8 @@ function BoardMemberDashboard() {
                     .order('created_at', { ascending: true });
 
                 const baseData = {
+                    'Complaint Number': complaint.complaint_id,
                     'No': runningNo++,
-                    //'Concern ID': complaint.complaint_id,
                     'Title': complaint.title,
                     'Description': complaint.description,
                     'Parent Name': complaint.user?.name || 'Anonymous',
@@ -163,8 +165,8 @@ function BoardMemberDashboard() {
                 if (comments && comments.length > 0) {
                     comments.forEach((comment, index) => {
                         exportData.push({
+                            'Complaint Number': index === 0 ? baseData['Complaint Number'] : '',
                             'No': index === 0 ? baseData['No'] : '',
-                            //'Concern ID': index === 0 ? baseData['Concern ID'] : '',
                             'Title': index === 0 ? baseData['Title'] : '',
                             'Description': index === 0 ? baseData['Description'] : '',
                             'Parent Name': index === 0 ? baseData['Parent Name'] : '',
@@ -286,17 +288,41 @@ function BoardMemberDashboard() {
             <div className="container-fluid py-4">
                 {/* Statistics Cards */}
                 <div className="row g-4 mb-4">
-                    <div className="col-md-6 col-lg-4">
-                        <div className="stat-card stat-new">
-                            <div className="stat-icon">🆕</div>
+                    <div className="col-md-6 col-lg-3">
+                        <div
+                            className={`stat-card stat-reviewed ${filter === 'responded' ? 'border border-primary border-3 shadow' : ''}`}
+                            onClick={() => setFilter('responded')}
+                            style={{ cursor: 'pointer' }}
+                            title="Click to view Responded By PR concerns"
+                        >
+                            <div className="stat-icon">📋</div>
+                            <div className="stat-details">
+                                <h3>{stats.responded}</h3>
+                                <p>Responded By PR</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-6 col-lg-3">
+                        <div
+                            className={`stat-card stat-assigned ${filter === 3 ? 'border border-primary border-3 shadow' : ''}`}
+                            onClick={() => setFilter(3)}
+                            style={{ cursor: 'pointer' }}
+                            title="Click to view With Principal concerns"
+                        >
+                            <div className="stat-icon">▶️</div>
                             <div className="stat-details">
                                 <h3>{stats.new}</h3>
                                 <p>With Principal</p>
                             </div>
                         </div>
                     </div>
-                    <div className="col-md-6 col-lg-4">
-                        <div className="stat-card stat-open">
+                    <div className="col-md-6 col-lg-3">
+                        <div
+                            className={`stat-card stat-open ${filter === 4 ? 'border border-primary border-3 shadow' : ''}`}
+                            onClick={() => setFilter(4)}
+                            style={{ cursor: 'pointer' }}
+                            title="Click to view Open concerns"
+                        >
                             <div className="stat-icon">📂</div>
                             <div className="stat-details">
                                 <h3>{stats.open}</h3>
@@ -304,8 +330,13 @@ function BoardMemberDashboard() {
                             </div>
                         </div>
                     </div>
-                    <div className="col-md-6 col-lg-4">
-                        <div className="stat-card stat-closed">
+                    <div className="col-md-6 col-lg-3">
+                        <div
+                            className={`stat-card stat-closed ${filter === 5 ? 'border border-primary border-3 shadow' : ''}`}
+                            onClick={() => setFilter(5)}
+                            style={{ cursor: 'pointer' }}
+                            title="Click to view Closed concerns"
+                        >
                             <div className="stat-icon">✅</div>
                             <div className="stat-details">
                                 <h3>{stats.closed}</h3>
@@ -319,7 +350,7 @@ function BoardMemberDashboard() {
                 <div className="card filter-card mb-4">
                     <div className="card-body">
                         <div className="row align-items-center">
-                            <div className="col-md-5 mb-3 mb-md-0">
+                            <div className="col-lg-5 col-md-12 mb-3 mb-lg-0">
                                 <div className="btn-group w-100" role="group">
                                     <button
                                         className={`btn w-100 ${filter === 'all' ? 'btn-primary' : 'btn-outline-primary'}`}
@@ -339,7 +370,6 @@ function BoardMemberDashboard() {
                                     >
                                         With Principal
                                     </button>
-
                                     <button
                                         className={`btn w-100 ${filter === 4 ? 'btn-primary' : 'btn-outline-primary'}`}
                                         onClick={() => setFilter(4)}
@@ -354,29 +384,29 @@ function BoardMemberDashboard() {
                                     </button>
                                 </div>
                             </div>
-                            <div className="col-md-2 mb-3 mb-md-0">
+                            <div className="col-lg-2 col-md-4 mb-3 mb-lg-0">
                                 <select
                                     className="form-select"
                                     value={priorityFilter}
                                     onChange={(e) => setPriorityFilter(e.target.value)}
                                 >
-                                    <option value="all">Priority: All</option>
+                                    <option value="all">All Priorities</option>
                                     <option value="low">Low</option>
                                     <option value="medium">Medium</option>
                                     <option value="high">High</option>
                                     <option value="urgent">Urgent</option>
                                 </select>
                             </div>
-                            <div className="col-md-3">
+                            <div className="col-lg-3 col-md-5 mb-3 mb-lg-0">
                                 <input
                                     type="text"
                                     className="form-control"
-                                    placeholder="🔍 Search complaints..."
+                                    placeholder="🔍 Search concerns..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
-                            <div className="col-md-2">
+                            <div className="col-lg-2 col-md-3">
                                 <button className="btn btn-primary w-100" onClick={handleExport}>
                                     📊 Export
                                 </button>
@@ -386,74 +416,97 @@ function BoardMemberDashboard() {
                 </div>
 
                 {/* Complaints List */}
-                <div className="complaints-list">
-                    {filteredComplaints.length === 0 ? (
-                        <div className="card text-center p-5">
-                            <h4>No complaints found</h4>
-                            <p className="text-muted">Try adjusting your filters or search term</p>
-                        </div>
-                    ) : (
-                        filteredComplaints.map((complaint) => (
-                            <div key={complaint.complaint_id} className="complaint-card card mb-3">
-                                <div className="card-body">
-                                    <div className="row">
-                                        <div className="col-lg-10">
-                                            <div className="d-flex align-items-start gap-3 mb-3">
-                                                <div className="flex-grow-1">
-                                                    <h5 className="complaint-title">{complaint.title}</h5>
-                                                    <p className="complaint-meta">
-                                                        <strong>From:</strong> {complaint.user?.name || 'Unknown'} ({complaint.user?.email || 'N/A'})
-                                                        <br />
-                                                        <strong>Submitted:</strong> {formatDate(complaint.created_at)}
-                                                    </p>
-                                                </div>
-                                                <div className="d-flex gap-2">
-                                                    {getStatusBadge(complaint.stat_code)}
-                                                    {complaint.stat_code != 1 && complaint.stat_code != 2 && (
-                                                        <span className={`badge ${getPriorityBadgeClass(complaint.priority)}`}>
-                                                            {complaint.priority || 'N/A'}
-                                                        </span>
-                                                    )}
-
-                                                </div>
-                                            </div>
-                                            <p className="complaint-description">
-                                                {complaint.description.length > 150
-                                                    ? complaint.description.substring(0, 150) + '...'
-                                                    : complaint.description}
-                                                {complaint.description.length > 150 && (
-                                                    <span
-                                                        className="text-primary ms-2"
-                                                        style={{ cursor: 'pointer', textDecoration: 'underline' }}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setSelectedComplaint(complaint);
-                                                            setShowReadMoreModal(true);
-                                                        }}
-                                                    >
-                                                        More
-                                                    </span>
-                                                )}
-                                            </p>
-                                        </div>
-                                        <div className="col-lg-2">
-                                            <div className="action-buttons">
-                                                {(complaint.stat_code === 2 || complaint.stat_code === 4 || complaint.stat_code === 5 || complaint.stat_code === 6) && (
-                                                    <button
-                                                        className={`btn btn-sm w-100 mb-2 text-white`}
-                                                        style={{ backgroundColor: '#6f42c1' }}
-                                                        onClick={() => handleViewComments(complaint)}
-                                                    >
-                                                        View Response
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
+                <div className="row">
+                    <div className="col-lg-12">
+                        <div className="complaints-list">
+                            {filteredComplaints.length === 0 ? (
+                                <div className="card text-center p-5">
+                                    <h5>No concerns found</h5>
+                                    <p className="text-muted">Try adjusting your filters or search term</p>
                                 </div>
-                            </div>
-                        ))
-                    )}
+                            ) : (
+                                filteredComplaints.map((complaint) => {
+                                    const isParentReplied = complaint.stat_code === 6 || complaint.stat_code === 9;
+                                    return (
+                                        <div
+                                            key={complaint.complaint_id}
+                                            className={`complaint-card card mb-3 ${selectedComplaint?.complaint_id === complaint.complaint_id ? 'selected' : ''} ${isParentReplied ? 'highlight-parent-reply' : ''}`}
+                                            onClick={() => setSelectedComplaint(complaint)}
+                                            style={{ cursor: 'pointer' }}
+                                        >
+                                            <div className="card-body">
+                                                <div className="d-flex align-items-start gap-3">
+                                                    {/* First Column: Concern Number */}
+                                                    <div className="d-flex flex-column align-items-center justify-content-center px-3 py-2 rounded bg-light border text-center flex-shrink-0" style={{ minWidth: '95px' }}>
+                                                        <span className="text-muted text-uppercase" style={{ fontSize: '0.65rem', fontWeight: '700', letterSpacing: '0.5px' }}>Concern #</span>
+                                                        <span className="fw-bold fs-6 text-primary">#{complaint.complaint_id}</span>
+                                                    </div>
+
+                                                    <div className="flex-grow-1">
+                                                        <div className="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+                                                            <div className="flex-grow-1">
+                                                                <div className="d-flex align-items-center gap-2 mb-1">
+                                                                    <h5 className="complaint-title mb-0">{complaint.title}</h5>
+                                                                    {isParentReplied && (
+                                                                        <span className="badge bg-warning text-dark fw-bold" style={{ fontSize: '0.72rem' }}>
+                                                                            ⚠️ Parent Replied
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <p className="complaint-meta mb-0">
+                                                                    <strong>From:</strong> {complaint.user?.name || 'Unknown'} ({complaint.user?.email || 'N/A'})
+                                                                    <br />
+                                                                    <strong>Submitted:</strong> {formatDate(complaint.created_at)}
+                                                                </p>
+                                                            </div>
+                                                            <div className="d-flex gap-2 flex-wrap align-items-center">
+                                                                {getStatusBadge(complaint.stat_code)}
+                                                                {complaint.stat_code != 1 && complaint.stat_code != 2 && complaint.priority && (
+                                                                    <span className={`badge ${getPriorityBadgeClass(complaint.priority)}`}>
+                                                                        {complaint.priority}
+                                                                    </span>
+                                                                )}
+                                                                {(complaint.stat_code === 2 || complaint.stat_code === 4 || complaint.stat_code === 5 || complaint.stat_code === 6 || complaint.stat_code === 7 || complaint.stat_code === 9) && (
+                                                                    <button
+                                                                        className="btn btn-sm text-white"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleViewComments(complaint);
+                                                                        }}
+                                                                        style={{ backgroundColor: '#4488ff' }}
+                                                                    >
+                                                                        View Response
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <p className="complaint-description mb-0">
+                                                            {complaint.description.length > 150
+                                                                ? complaint.description.substring(0, 150) + '...'
+                                                                : complaint.description}{' '}
+                                                            {complaint.description.length > 150 && (
+                                                                <span
+                                                                    className="text-primary ms-2"
+                                                                    style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setSelectedComplaint(complaint);
+                                                                        setShowReadMoreModal(true);
+                                                                    }}
+                                                                >
+                                                                    More
+                                                                </span>
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -462,13 +515,17 @@ function BoardMemberDashboard() {
                 <div className="modal-overlay" onClick={() => setShowReadMoreModal(false)}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h5 style={{ color: 'white' }}>Complaint Details</h5>
+                            <h5 style={{ color: 'white' }}>Concern Details</h5>
                             <button
                                 className="btn-close"
                                 onClick={() => setShowReadMoreModal(false)}
                             >X</button>
                         </div>
                         <div className="modal-body">
+                            <div className="mb-3">
+                                <label className="form-label fw-bold">Concern #:</label>
+                                <p className="form-control-static fw-bold text-primary">#{selectedComplaint.complaint_id}</p>
+                            </div>
                             <div className="mb-3">
                                 <label className="form-label fw-bold">From:</label>
                                 <p className="form-control-static">{selectedComplaint.user?.name || 'Unknown'} ({selectedComplaint.user?.email || 'N/A'})</p>

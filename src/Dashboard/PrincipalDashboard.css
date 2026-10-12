@@ -130,6 +130,16 @@
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
+.complaint-card.highlight-parent-reply {
+    background: #fff8e1 !important;
+    border-left: 6px solid #f59e0b !important;
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.25);
+}
+
+.complaint-card.highlight-parent-reply:hover {
+    background: #fef3c7 !important;
+}
+
 .complaint-title {
     color: #333;
     font-weight: 700;
@@ -457,3 +467,14 @@
         flex-wrap: wrap;
     }
 }
+
+/* Highlight when parent has replied */
+.complaint-card.highlight-parent-reply {
+    background-color: #fff9e6 !important;
+    border-left: 6px solid #f59e0b !important;
+    box-shadow: 0 4px 16px rgba(245, 158, 11, 0.18) !important;
+}
+
+.complaint-card.highlight-parent-reply:hover {
+    background-color: #fef3c7 !important;
+}

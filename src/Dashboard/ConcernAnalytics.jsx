@@ -5,6 +5,21 @@ import { supabase } from '../../SupabaseClient';
 import { useUser } from '../context/UserContext';
 import './ConcernAnalytics.css';
 
+// Safe date parsers that avoid timezone/string parsing discrepancies across browsers
+const parseStartOfDay = (dateStr) => {
+    if (!dateStr) return new Date(2020, 0, 1, 0, 0, 0, 0);
+    const parts = dateStr.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return new Date(2020, 0, 1, 0, 0, 0, 0);
+    return new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
+};
+
+const parseEndOfDay = (dateStr) => {
+    if (!dateStr) return new Date(2099, 11, 31, 23, 59, 59, 999);
+    const parts = dateStr.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return new Date(2099, 11, 31, 23, 59, 59, 999);
+    return new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59, 999);
+};
+
 export default function ConcernAnalytics() {
     const navigate = useNavigate();
     const { name, role } = useUser();
@@ -12,20 +27,17 @@ export default function ConcernAnalytics() {
     const [allComplaints, setAllComplaints] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Time filter state
-    const [timePreset, setTimePreset] = useState('30d'); // '7d', '30d', '90d', 'year', 'all', 'custom'
-    const [startDate, setStartDate] = useState(() => {
-        const d = new Date();
-        d.setDate(d.getDate() - 30);
-        return d.toISOString().split('T')[0];
-    });
-    const [endDate, setEndDate] = useState(() => {
-        return new Date().toISOString().split('T')[0];
-    });
+    // Filter states
+    const [timePreset, setTimePreset] = useState('all'); // Default to 'all' so data is immediately visible
+    const [startDate, setStartDate] = useState('2020-01-01');
+    const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+    const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'new', 'forwarded', 'open', 'closed'
+    const [priorityFilter, setPriorityFilter] = useState('all'); // 'all', 'urgent', 'high', 'medium', 'low'
+    const [typeFilter, setTypeFilter] = useState('all');
+    const [searchQuery, setSearchQuery] = useState('');
 
     const [hoveredBar, setHoveredBar] = useState(null);
     const [hoveredDonut, setHoveredDonut] = useState(null);
-    const [searchTable, setSearchTable] = useState('');
 
     useEffect(() => {
         fetchComplaints();
@@ -52,7 +64,7 @@ export default function ConcernAnalytics() {
         }
     };
 
-    // Handle time preset changes
+    // Preset time range selection
     const handlePresetChange = (preset) => {
         setTimePreset(preset);
         const today = new Date();
@@ -77,24 +89,11 @@ export default function ConcernAnalytics() {
         }
     };
 
-    // Filter complaints within selected time period
-    const filteredComplaints = useMemo(() => {
-        if (!allComplaints || allComplaints.length === 0) return [];
-        const start = new Date(`${startDate}T00:00:00`);
-        const end = new Date(`${endDate}T23:59:59`);
-
-        return allComplaints.filter((c) => {
-            if (!c.created_at) return false;
-            const created = new Date(c.created_at);
-            return created >= start && created <= end;
-        });
-    }, [allComplaints, startDate, endDate]);
-
-    // Categorize status code
+    // Category helper for status codes
     const getStatusCategory = (code) => {
-        if (code === 1) return 'new'; // Initiated by parent
-        if (code === 3) return 'forwarded'; // Forwarded to Principal
-        if (code === 2 || code === 4 || code === 6 || code === 9) return 'open'; // Open
+        if (code === 1) return 'new'; // Initiated by Parent
+        if (code === 3) return 'forwarded'; // Forwarded to Principal / With Principal
+        if (code === 2 || code === 4 || code === 6 || code === 9) return 'open'; // Open / In Progress
         if (code === 5 || code === 7) return 'closed'; // Closed
         return 'other';
     };
@@ -102,18 +101,70 @@ export default function ConcernAnalytics() {
     const getStatusBadgeLabel = (code) => {
         switch (code) {
             case 1: return { text: 'Initiated By Parent', className: 'badge-status-new' };
-            case 3: return { text: 'Forwarded to Principal', className: 'badge-status-fwd' };
+            case 3: return { text: 'With Principal', className: 'badge-status-fwd' };
             case 2:
             case 4:
             case 6:
-            case 9: return { text: 'Open', className: 'badge-status-open' };
+            case 9: return { text: 'Open / In Progress', className: 'badge-status-open' };
             case 5:
             case 7: return { text: 'Closed', className: 'badge-status-closed' };
             default: return { text: `Status ${code}`, className: 'bg-secondary' };
         }
     };
 
-    // Calculate status counts & metrics
+    // Available unique concern types from data
+    const availableTypes = useMemo(() => {
+        const types = new Set();
+        allComplaints.forEach((c) => {
+            if (c.type) types.add(c.type);
+        });
+        return Array.from(types);
+    }, [allComplaints]);
+
+    // Apply Time, Status, Priority, Type and Search Filters
+    const filteredComplaints = useMemo(() => {
+        if (!allComplaints || allComplaints.length === 0) return [];
+        const start = parseStartOfDay(startDate);
+        const end = parseEndOfDay(endDate);
+
+        return allComplaints.filter((c) => {
+            // Time filter
+            if (c.created_at) {
+                const created = new Date(c.created_at);
+                if (created < start || created > end) return false;
+            }
+
+            // Status filter
+            if (statusFilter !== 'all') {
+                const cat = getStatusCategory(c.stat_code);
+                if (cat !== statusFilter) return false;
+            }
+
+            // Priority filter
+            if (priorityFilter !== 'all') {
+                const p = (c.priority || 'medium').toLowerCase();
+                if (p !== priorityFilter.toLowerCase()) return false;
+            }
+
+            // Type filter
+            if (typeFilter !== 'all') {
+                if ((c.type || 'General') !== typeFilter) return false;
+            }
+
+            // Search query
+            if (searchQuery.trim()) {
+                const q = searchQuery.toLowerCase();
+                const titleMatch = c.title && c.title.toLowerCase().includes(q);
+                const descMatch = c.description && c.description.toLowerCase().includes(q);
+                const studentMatch = c.student_name && c.student_name.toLowerCase().includes(q);
+                if (!titleMatch && !descMatch && !studentMatch) return false;
+            }
+
+            return true;
+        });
+    }, [allComplaints, startDate, endDate, statusFilter, priorityFilter, typeFilter, searchQuery]);
+
+    // Metrics for summary cards
     const metrics = useMemo(() => {
         let initiatedCount = 0;
         let forwardedCount = 0;
@@ -141,146 +192,47 @@ export default function ConcernAnalytics() {
         };
     }, [filteredComplaints]);
 
-    // Priority breakdown
-    const priorityBreakdown = useMemo(() => {
-        const counts = { urgent: 0, high: 0, medium: 0, low: 0, unassigned: 0 };
-        filteredComplaints.forEach((c) => {
-            const p = (c.priority || 'unassigned').toLowerCase();
-            if (counts[p] !== undefined) counts[p]++;
-            else counts.unassigned++;
-        });
-        return counts;
-    }, [filteredComplaints]);
-
-    // Type / Category breakdown
-    const typeBreakdown = useMemo(() => {
-        const counts = {};
-        filteredComplaints.forEach((c) => {
-            const t = c.type || 'General';
-            counts[t] = (counts[t] || 0) + 1;
-        });
-        return Object.entries(counts)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 5);
-    }, [filteredComplaints]);
-
-    // Build timeline buckets for the bar chart
+    // Timeline data for visual bar graph
     const timelineData = useMemo(() => {
-        if (!startDate || !endDate) return [];
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        const diffDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
+        if (filteredComplaints.length === 0) return [];
 
-        // Mode: 'daily', 'weekly', 'monthly'
-        const mode = diffDays <= 31 ? 'daily' : diffDays <= 120 ? 'weekly' : 'monthly';
-        const buckets = [];
+        // Group complaints by date (YYYY-MM-DD)
+        const dateGroups = {};
+        filteredComplaints.forEach((c) => {
+            if (!c.created_at) return;
+            const d = new Date(c.created_at);
+            const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-        if (mode === 'daily') {
-            const curr = new Date(start);
-            while (curr <= end) {
-                const dateKey = curr.toISOString().split('T')[0];
-                const label = curr.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                buckets.push({
+            if (!dateGroups[dateKey]) {
+                dateGroups[dateKey] = {
                     key: dateKey,
                     label,
-                    date: new Date(curr),
                     initiated: 0,
                     forwarded: 0,
                     open: 0,
                     closed: 0,
                     total: 0
-                });
-                curr.setDate(curr.getDate() + 1);
+                };
             }
 
-            filteredComplaints.forEach((c) => {
-                const dateKey = new Date(c.created_at).toISOString().split('T')[0];
-                const b = buckets.find((item) => item.key === dateKey);
-                if (b) {
-                    const cat = getStatusCategory(c.stat_code);
-                    if (cat === 'new') b.initiated++;
-                    else if (cat === 'forwarded') b.forwarded++;
-                    else if (cat === 'open') b.open++;
-                    else if (cat === 'closed') b.closed++;
-                    b.total++;
-                }
-            });
-        } else if (mode === 'weekly') {
-            const curr = new Date(start);
-            while (curr <= end) {
-                const weekStart = new Date(curr);
-                const weekEnd = new Date(curr);
-                weekEnd.setDate(weekEnd.getDate() + 6);
-                const label = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-                buckets.push({
-                    key: weekStart.toISOString().split('T')[0],
-                    label,
-                    weekStart: new Date(weekStart),
-                    weekEnd: new Date(weekEnd),
-                    initiated: 0,
-                    forwarded: 0,
-                    open: 0,
-                    closed: 0,
-                    total: 0
-                });
-                curr.setDate(curr.getDate() + 7);
-            }
+            const cat = getStatusCategory(c.stat_code);
+            if (cat === 'new') dateGroups[dateKey].initiated++;
+            else if (cat === 'forwarded') dateGroups[dateKey].forwarded++;
+            else if (cat === 'open') dateGroups[dateKey].open++;
+            else if (cat === 'closed') dateGroups[dateKey].closed++;
+            dateGroups[dateKey].total++;
+        });
 
-            filteredComplaints.forEach((c) => {
-                const d = new Date(c.created_at);
-                const b = buckets.find((item) => d >= item.weekStart && d <= item.weekEnd);
-                if (b) {
-                    const cat = getStatusCategory(c.stat_code);
-                    if (cat === 'new') b.initiated++;
-                    else if (cat === 'forwarded') b.forwarded++;
-                    else if (cat === 'open') b.open++;
-                    else if (cat === 'closed') b.closed++;
-                    b.total++;
-                }
-            });
-        } else {
-            // Monthly
-            const curr = new Date(start.getFullYear(), start.getMonth(), 1);
-            const finalEnd = new Date(end.getFullYear(), end.getMonth() + 1, 0);
+        // Sort chronologically
+        return Object.values(dateGroups).sort((a, b) => a.key.localeCompare(b.key));
+    }, [filteredComplaints]);
 
-            while (curr <= finalEnd) {
-                const monthKey = `${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, '0')}`;
-                const label = curr.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
-                buckets.push({
-                    key: monthKey,
-                    label,
-                    year: curr.getFullYear(),
-                    month: curr.getMonth(),
-                    initiated: 0,
-                    forwarded: 0,
-                    open: 0,
-                    closed: 0,
-                    total: 0
-                });
-                curr.setMonth(curr.getMonth() + 1);
-            }
-
-            filteredComplaints.forEach((c) => {
-                const d = new Date(c.created_at);
-                const b = buckets.find((item) => d.getFullYear() === item.year && d.getMonth() === item.month);
-                if (b) {
-                    const cat = getStatusCategory(c.stat_code);
-                    if (cat === 'new') b.initiated++;
-                    else if (cat === 'forwarded') b.forwarded++;
-                    else if (cat === 'open') b.open++;
-                    else if (cat === 'closed') b.closed++;
-                    b.total++;
-                }
-            });
-        }
-
-        return buckets;
-    }, [filteredComplaints, startDate, endDate]);
-
-    // Max value for timeline chart Y-axis scale
+    // Max value for timeline scale
     const maxTimelineVal = useMemo(() => {
+        if (timelineData.length === 0) return 5;
         const max = Math.max(...timelineData.map((d) => d.total), 1);
-        return Math.ceil(max * 1.25);
+        return Math.max(max + 1, Math.ceil(max * 1.3));
     }, [timelineData]);
 
     // Donut chart segments
@@ -290,17 +242,17 @@ export default function ConcernAnalytics() {
 
         const data = [
             { id: 'closed', label: 'Closed', count: closedCount, color: '#10b981' },
-            { id: 'open', label: 'Open', count: openCount, color: '#e5ba41' },
-            { id: 'forwarded', label: 'Forwarded to Principal', count: forwardedCount, color: '#9b5de5' },
+            { id: 'open', label: 'Open / In Progress', count: openCount, color: '#e5ba41' },
+            { id: 'forwarded', label: 'With Principal', count: forwardedCount, color: '#9b5de5' },
             { id: 'new', label: 'Initiated By Parent', count: initiatedCount, color: '#219ebc' }
         ];
 
-        const r = 75;
+        const r = 70;
         const circumference = 2 * Math.PI * r;
         let cumulativeAngle = 0;
 
         return data.map((item) => {
-            const percent = item.count / total;
+            const percent = total > 0 ? item.count / total : 0;
             const strokeDasharray = `${percent * circumference} ${circumference}`;
             const strokeDashoffset = -cumulativeAngle * circumference;
             cumulativeAngle += percent;
@@ -315,19 +267,43 @@ export default function ConcernAnalytics() {
         });
     }, [metrics]);
 
-    // Export current filtered period to Excel
-    const handleExportPeriod = () => {
+    // Priority breakdown
+    const priorityBreakdown = useMemo(() => {
+        const counts = { urgent: 0, high: 0, medium: 0, low: 0 };
+        filteredComplaints.forEach((c) => {
+            const p = (c.priority || 'medium').toLowerCase();
+            if (counts[p] !== undefined) counts[p]++;
+            else counts.medium++;
+        });
+        return counts;
+    }, [filteredComplaints]);
+
+    // Category breakdown
+    const categoryBreakdown = useMemo(() => {
+        const counts = {};
+        filteredComplaints.forEach((c) => {
+            const t = c.type || 'General';
+            counts[t] = (counts[t] || 0) + 1;
+        });
+        return Object.entries(counts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5);
+    }, [filteredComplaints]);
+
+    // Export period to Excel
+    const handleExportExcel = () => {
         if (filteredComplaints.length === 0) {
-            alert('No complaints in this period to export.');
+            alert('No concerns found with the current filters.');
             return;
         }
 
-        const exportData = filteredComplaints.map((c, idx) => ({
-            'No': idx + 1,
+        const exportRows = filteredComplaints.map((c, i) => ({
+            'Complaint Number': c.complaint_id,
+            'No': i + 1,
             'Title': c.title || '',
             'Description': c.description || '',
             'Type': c.type || '',
-            'Priority': c.priority || 'N/A',
+            'Priority': (c.priority || 'N/A').toUpperCase(),
             'Status': getStatusBadgeLabel(c.stat_code).text,
             'Student Name': c.student_name || '',
             'Student No': c.student_no || '',
@@ -336,26 +312,15 @@ export default function ConcernAnalytics() {
             'Created Datetime': new Date(c.created_at).toLocaleString()
         }));
 
-        const ws = XLSX.utils.json_to_sheet(exportData);
+        const ws = XLSX.utils.json_to_sheet(exportRows);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Period_Concerns");
-        XLSX.writeFile(wb, `Concerns_${startDate}_to_${endDate}.xlsx`);
+        XLSX.utils.book_append_sheet(wb, ws, "Concerns_Analytics");
+        XLSX.writeFile(wb, `Concerns_Analytics_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
-
-    // Filter table search
-    const displayedTableComplaints = useMemo(() => {
-        if (!searchTable.trim()) return filteredComplaints;
-        const query = searchTable.toLowerCase();
-        return filteredComplaints.filter((c) =>
-            (c.title && c.title.toLowerCase().includes(query)) ||
-            (c.student_name && c.student_name.toLowerCase().includes(query)) ||
-            (c.type && c.type.toLowerCase().includes(query))
-        );
-    }, [filteredComplaints, searchTable]);
 
     return (
         <div className="analytics-container">
-            {/* Top Navigation */}
+            {/* Top Navigation Bar */}
             <nav className="navbar navbar-dark analytics-navbar">
                 <div className="container-fluid d-flex justify-content-between align-items-center">
                     <div className="d-flex align-items-center gap-3">
@@ -363,26 +328,34 @@ export default function ConcernAnalytics() {
                             <span>←</span> Back to Dashboard
                         </button>
                         <span className="navbar-brand mb-0 h1 fw-bold text-white fs-5">
-                            📊 Concern Status Analytics & Graphs
+                            📊 Concern Status Analytics & Visual Graphs
                         </span>
                     </div>
                     <div className="d-flex align-items-center gap-3">
                         <span className="text-white-50 small d-none d-md-inline">
-                            Logged in as <strong className="text-white">{name || role || 'User'}</strong>
+                            Welcome, <strong className="text-white">{name || role || 'User'}</strong>
                         </span>
                     </div>
                 </div>
             </nav>
 
             <div className="container-fluid px-4 py-4">
-                {/* Time Period Filter Bar */}
+                {/* Comprehensive Filters Bar */}
                 <div className="card analytics-card mb-4">
                     <div className="card-body p-3">
-                        <div className="row align-items-center g-3">
-                            {/* Preset Buttons */}
+                        {/* Row 1: Time Range Presets & Custom Pickers */}
+                        <div className="row align-items-center g-3 mb-3">
                             <div className="col-xl-6 col-lg-7">
-                                <label className="form-label text-muted small fw-bold mb-2 text-uppercase">Time Period Preset:</label>
+                                <label className="form-label text-muted small fw-bold mb-2 text-uppercase">
+                                    ⏱️ Time Period:
+                                </label>
                                 <div className="d-flex flex-wrap gap-2">
+                                    <button
+                                        className={`time-pill-btn ${timePreset === 'all' ? 'active' : ''}`}
+                                        onClick={() => handlePresetChange('all')}
+                                    >
+                                        All Time
+                                    </button>
                                     <button
                                         className={`time-pill-btn ${timePreset === '7d' ? 'active' : ''}`}
                                         onClick={() => handlePresetChange('7d')}
@@ -407,18 +380,13 @@ export default function ConcernAnalytics() {
                                     >
                                         This Year
                                     </button>
-                                    <button
-                                        className={`time-pill-btn ${timePreset === 'all' ? 'active' : ''}`}
-                                        onClick={() => handlePresetChange('all')}
-                                    >
-                                        All Time
-                                    </button>
                                 </div>
                             </div>
 
-                            {/* Custom Date Pickers */}
                             <div className="col-xl-4 col-lg-5 col-md-8">
-                                <label className="form-label text-muted small fw-bold mb-2 text-uppercase">Custom Date Range:</label>
+                                <label className="form-label text-muted small fw-bold mb-2 text-uppercase">
+                                    📅 Custom Date Range:
+                                </label>
                                 <div className="d-flex align-items-center gap-2">
                                     <input
                                         type="date"
@@ -442,15 +410,107 @@ export default function ConcernAnalytics() {
                                 </div>
                             </div>
 
-                            {/* Export button */}
                             <div className="col-xl-2 col-lg-12 text-xl-end">
                                 <button
                                     className="btn btn-outline-success btn-sm w-100 fw-bold"
-                                    onClick={handleExportPeriod}
+                                    onClick={handleExportExcel}
                                     disabled={filteredComplaints.length === 0}
                                 >
-                                    📥 Export Period (.xlsx)
+                                    📥 Export (.xlsx)
                                 </button>
+                            </div>
+                        </div>
+
+                        <hr className="my-2" style={{ opacity: 0.15 }} />
+
+                        {/* Row 2: Status, Priority, Type, and Search Filters */}
+                        <div className="row align-items-center g-3 pt-2">
+                            {/* Status Filter Buttons */}
+                            <div className="col-lg-5 col-md-12">
+                                <label className="form-label text-muted small fw-bold mb-1 text-uppercase">
+                                    📌 Filter Status:
+                                </label>
+                                <div className="btn-group w-100" role="group">
+                                    <button
+                                        className={`btn btn-sm ${statusFilter === 'all' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        onClick={() => setStatusFilter('all')}
+                                    >
+                                        All Statuses
+                                    </button>
+                                    <button
+                                        className={`btn btn-sm ${statusFilter === 'new' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        onClick={() => setStatusFilter('new')}
+                                    >
+                                        Initiated
+                                    </button>
+                                    <button
+                                        className={`btn btn-sm ${statusFilter === 'forwarded' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        onClick={() => setStatusFilter('forwarded')}
+                                    >
+                                        With Principal
+                                    </button>
+                                    <button
+                                        className={`btn btn-sm ${statusFilter === 'open' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        onClick={() => setStatusFilter('open')}
+                                    >
+                                        Open
+                                    </button>
+                                    <button
+                                        className={`btn btn-sm ${statusFilter === 'closed' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        onClick={() => setStatusFilter('closed')}
+                                    >
+                                        Closed
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Priority Filter */}
+                            <div className="col-lg-2 col-md-4">
+                                <label className="form-label text-muted small fw-bold mb-1 text-uppercase">
+                                    ⚡ Priority:
+                                </label>
+                                <select
+                                    className="form-select form-select-sm"
+                                    value={priorityFilter}
+                                    onChange={(e) => setPriorityFilter(e.target.value)}
+                                >
+                                    <option value="all">All Priorities</option>
+                                    <option value="urgent">Urgent</option>
+                                    <option value="high">High</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="low">Low</option>
+                                </select>
+                            </div>
+
+                            {/* Concern Type Filter */}
+                            <div className="col-lg-2 col-md-4">
+                                <label className="form-label text-muted small fw-bold mb-1 text-uppercase">
+                                    🏷️ Category:
+                                </label>
+                                <select
+                                    className="form-select form-select-sm"
+                                    value={typeFilter}
+                                    onChange={(e) => setTypeFilter(e.target.value)}
+                                >
+                                    <option value="all">All Categories</option>
+                                    {availableTypes.map((t) => (
+                                        <option key={t} value={t}>{t}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Search Box */}
+                            <div className="col-lg-3 col-md-4">
+                                <label className="form-label text-muted small fw-bold mb-1 text-uppercase">
+                                    🔍 Search:
+                                </label>
+                                <input
+                                    type="text"
+                                    className="form-control form-control-sm"
+                                    placeholder="Search title, student..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
                             </div>
                         </div>
                     </div>
@@ -465,7 +525,7 @@ export default function ConcernAnalytics() {
                     </div>
                 ) : (
                     <>
-                        {/* Summary KPI Cards */}
+                        {/* Summary KPI Stat Cards */}
                         <div className="row g-3 mb-4">
                             <div className="col-6 col-lg">
                                 <div className="kpi-card kpi-total">
@@ -490,7 +550,7 @@ export default function ConcernAnalytics() {
                                     <div className="kpi-icon">🟣</div>
                                     <div className="kpi-info">
                                         <h3>{metrics.forwardedCount}</h3>
-                                        <p>Forwarded</p>
+                                        <p>With Principal</p>
                                     </div>
                                 </div>
                             </div>
@@ -516,68 +576,66 @@ export default function ConcernAnalytics() {
 
                         {/* Visual Graphs Section */}
                         <div className="row g-4 mb-4">
-                            {/* Graph 1: Timeline Trend Graph (Stacked Bar Chart) */}
+                            {/* Graph 1: Timeline Trend Graph (Interactive Stacked Column Chart) */}
                             <div className="col-xl-8 col-lg-7">
                                 <div className="card analytics-card h-100">
                                     <div className="analytics-card-header">
                                         <h5>
-                                            <span>📈</span> Status Over Time Trend
+                                            <span>📈</span> Status Over Time Graph
                                         </h5>
-                                        <div className="d-flex align-items-center gap-3 small">
+                                        <div className="d-flex align-items-center gap-3 small flex-wrap">
                                             <span className="d-flex align-items-center gap-1">
-                                                <span style={{ width: 10, height: 10, background: '#219ebc', borderRadius: 2 }}></span> Initiated
+                                                <span style={{ width: 12, height: 12, background: '#219ebc', borderRadius: 3 }}></span> Initiated
                                             </span>
                                             <span className="d-flex align-items-center gap-1">
-                                                <span style={{ width: 10, height: 10, background: '#9b5de5', borderRadius: 2 }}></span> Forwarded
+                                                <span style={{ width: 12, height: 12, background: '#9b5de5', borderRadius: 3 }}></span> With Principal
                                             </span>
                                             <span className="d-flex align-items-center gap-1">
-                                                <span style={{ width: 10, height: 10, background: '#e5ba41', borderRadius: 2 }}></span> Open
+                                                <span style={{ width: 12, height: 12, background: '#e5ba41', borderRadius: 3 }}></span> Open
                                             </span>
                                             <span className="d-flex align-items-center gap-1">
-                                                <span style={{ width: 10, height: 10, background: '#10b981', borderRadius: 2 }}></span> Closed
+                                                <span style={{ width: 12, height: 12, background: '#10b981', borderRadius: 3 }}></span> Closed
                                             </span>
                                         </div>
                                     </div>
                                     <div className="card-body p-4 position-relative">
                                         {timelineData.length === 0 ? (
                                             <div className="text-center py-5 text-muted">
-                                                No concern data recorded in the selected period.
+                                                <h6>No concerns match the selected time period and filters.</h6>
+                                                <p className="small">Try selecting "All Time" or adjusting the status/priority filters.</p>
                                             </div>
                                         ) : (
                                             <div style={{ width: '100%', height: 320 }}>
-                                                {/* SVG Timeline Chart */}
-                                                <svg viewBox="0 0 800 320" className="chart-svg" preserveAspectRatio="none" style={{ height: '100%', width: '100%' }}>
-                                                    {/* Horizontal Grid Lines */}
+                                                <svg viewBox="0 0 800 320" preserveAspectRatio="none" style={{ height: '100%', width: '100%' }}>
+                                                    {/* Y-Axis Grid Lines & Values */}
                                                     {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
-                                                        const y = 280 - ratio * 240;
+                                                        const y = 270 - ratio * 220;
                                                         const val = Math.round(ratio * maxTimelineVal);
                                                         return (
                                                             <g key={idx}>
-                                                                <line x1="45" y1={y} x2="780" y2={y} className="chart-grid-line" />
-                                                                <text x="35" y={y + 4} textAnchor="end" className="chart-axis-text">
+                                                                <line x1="50" y1={y} x2="780" y2={y} className="chart-grid-line" />
+                                                                <text x="40" y={y + 4} textAnchor="end" className="chart-axis-text">
                                                                     {val}
                                                                 </text>
                                                             </g>
                                                         );
                                                     })}
 
-                                                    {/* Bars */}
+                                                    {/* Stacked Bars */}
                                                     {(() => {
-                                                        const plotWidth = 735;
+                                                        const plotWidth = 720;
                                                         const n = timelineData.length;
                                                         const slotWidth = plotWidth / n;
-                                                        const barWidth = Math.max(6, Math.min(36, slotWidth * 0.65));
+                                                        const barWidth = Math.max(14, Math.min(60, slotWidth * 0.6));
 
                                                         return timelineData.map((bucket, index) => {
                                                             const x = 55 + index * slotWidth + (slotWidth - barWidth) / 2;
-                                                            const totalH = (bucket.total / maxTimelineVal) * 240;
-                                                            const closedH = (bucket.closed / maxTimelineVal) * 240;
-                                                            const openH = (bucket.open / maxTimelineVal) * 240;
-                                                            const fwdH = (bucket.forwarded / maxTimelineVal) * 240;
-                                                            const initH = (bucket.initiated / maxTimelineVal) * 240;
+                                                            const closedH = (bucket.closed / maxTimelineVal) * 220;
+                                                            const openH = (bucket.open / maxTimelineVal) * 220;
+                                                            const fwdH = (bucket.forwarded / maxTimelineVal) * 220;
+                                                            const initH = (bucket.initiated / maxTimelineVal) * 220;
 
-                                                            // Stack segments from bottom up
-                                                            const yBase = 280;
+                                                            const yBase = 270;
                                                             const yClosed = yBase - closedH;
                                                             const yOpen = yClosed - openH;
                                                             const yFwd = yOpen - fwdH;
@@ -585,30 +643,27 @@ export default function ConcernAnalytics() {
 
                                                             const isHovered = hoveredBar === bucket;
 
-                                                            // Skip x-axis label every other if too many buckets
-                                                            const showLabel = n <= 16 || index % Math.ceil(n / 14) === 0 || index === n - 1;
-
                                                             return (
                                                                 <g
-                                                                    key={bucket.key || index}
+                                                                    key={bucket.key}
                                                                     onMouseEnter={() => setHoveredBar(bucket)}
                                                                     onMouseLeave={() => setHoveredBar(null)}
                                                                     style={{ cursor: 'pointer' }}
                                                                 >
-                                                                    {/* Background highlight on hover */}
+                                                                    {/* Column Hover Background */}
                                                                     {isHovered && (
                                                                         <rect
                                                                             x={55 + index * slotWidth}
-                                                                            y="30"
+                                                                            y="40"
                                                                             width={slotWidth}
-                                                                            height="250"
+                                                                            height="235"
                                                                             fill="#f1f5f9"
-                                                                            rx="6"
-                                                                            opacity="0.7"
+                                                                            rx="8"
+                                                                            opacity="0.8"
                                                                         />
                                                                     )}
 
-                                                                    {/* Closed segment */}
+                                                                    {/* Closed Segment */}
                                                                     {closedH > 0 && (
                                                                         <rect
                                                                             x={x}
@@ -616,11 +671,12 @@ export default function ConcernAnalytics() {
                                                                             width={barWidth}
                                                                             height={closedH}
                                                                             fill="#10b981"
-                                                                            rx="2"
+                                                                            rx="3"
                                                                             className="chart-bar-rect"
                                                                         />
                                                                     )}
-                                                                    {/* Open segment */}
+
+                                                                    {/* Open Segment */}
                                                                     {openH > 0 && (
                                                                         <rect
                                                                             x={x}
@@ -628,11 +684,12 @@ export default function ConcernAnalytics() {
                                                                             width={barWidth}
                                                                             height={openH}
                                                                             fill="#e5ba41"
-                                                                            rx="2"
+                                                                            rx="3"
                                                                             className="chart-bar-rect"
                                                                         />
                                                                     )}
-                                                                    {/* Forwarded segment */}
+
+                                                                    {/* Forwarded Segment */}
                                                                     {fwdH > 0 && (
                                                                         <rect
                                                                             x={x}
@@ -640,11 +697,12 @@ export default function ConcernAnalytics() {
                                                                             width={barWidth}
                                                                             height={fwdH}
                                                                             fill="#9b5de5"
-                                                                            rx="2"
+                                                                            rx="3"
                                                                             className="chart-bar-rect"
                                                                         />
                                                                     )}
-                                                                    {/* Initiated segment */}
+
+                                                                    {/* Initiated Segment */}
                                                                     {initH > 0 && (
                                                                         <rect
                                                                             x={x}
@@ -652,22 +710,35 @@ export default function ConcernAnalytics() {
                                                                             width={barWidth}
                                                                             height={initH}
                                                                             fill="#219ebc"
-                                                                            rx="2"
+                                                                            rx="3"
                                                                             className="chart-bar-rect"
                                                                         />
                                                                     )}
 
-                                                                    {/* X Axis Label */}
-                                                                    {showLabel && (
+                                                                    {/* Total count badge on top of bar */}
+                                                                    {bucket.total > 0 && (
                                                                         <text
                                                                             x={x + barWidth / 2}
-                                                                            y="302"
+                                                                            y={yInit - 6}
                                                                             textAnchor="middle"
-                                                                            className="chart-axis-text"
+                                                                            fill="#334155"
+                                                                            fontSize="12"
+                                                                            fontWeight="bold"
                                                                         >
-                                                                            {bucket.label}
+                                                                            {bucket.total}
                                                                         </text>
                                                                     )}
+
+                                                                    {/* X Axis Label */}
+                                                                    <text
+                                                                        x={x + barWidth / 2}
+                                                                        y="292"
+                                                                        textAnchor="middle"
+                                                                        className="chart-axis-text"
+                                                                        fontWeight={isHovered ? 'bold' : 'normal'}
+                                                                    >
+                                                                        {bucket.label}
+                                                                    </text>
                                                                 </g>
                                                             );
                                                         });
@@ -688,10 +759,10 @@ export default function ConcernAnalytics() {
                                                     >
                                                         <strong className="d-block mb-1 text-info">{hoveredBar.label}</strong>
                                                         <div className="d-flex justify-content-between gap-3">
-                                                            <span>Total:</span>
+                                                            <span>Total Concerns:</span>
                                                             <strong>{hoveredBar.total}</strong>
                                                         </div>
-                                                        <div className="d-flex justify-content-between gap-3 text-emerald" style={{ color: '#10b981' }}>
+                                                        <div className="d-flex justify-content-between gap-3" style={{ color: '#10b981' }}>
                                                             <span>Closed:</span>
                                                             <strong>{hoveredBar.closed}</strong>
                                                         </div>
@@ -700,7 +771,7 @@ export default function ConcernAnalytics() {
                                                             <strong>{hoveredBar.open}</strong>
                                                         </div>
                                                         <div className="d-flex justify-content-between gap-3" style={{ color: '#9b5de5' }}>
-                                                            <span>Forwarded:</span>
+                                                            <span>With Principal:</span>
                                                             <strong>{hoveredBar.forwarded}</strong>
                                                         </div>
                                                         <div className="d-flex justify-content-between gap-3" style={{ color: '#219ebc' }}>
@@ -722,28 +793,28 @@ export default function ConcernAnalytics() {
                                         <h5>
                                             <span>🍩</span> Status Distribution
                                         </h5>
-                                        <span className="badge bg-light text-dark fw-bold">Period Total</span>
+                                        <span className="badge bg-light text-dark fw-bold border">
+                                            {metrics.total} Concerns
+                                        </span>
                                     </div>
                                     <div className="card-body p-4 d-flex flex-column justify-content-center">
                                         {metrics.total === 0 ? (
                                             <div className="text-center py-5 text-muted">
-                                                No concerns found in this time range.
+                                                No concerns found for the selected filters.
                                             </div>
                                         ) : (
                                             <>
                                                 {/* SVG Donut */}
-                                                <div className="d-flex justify-content-center my-3 position-relative">
-                                                    <svg width="220" height="220" viewBox="0 0 200 200" style={{ transform: 'rotate(-90deg)' }}>
-                                                        {/* Base circle background */}
+                                                <div className="d-flex justify-content-center my-2 position-relative">
+                                                    <svg width="210" height="210" viewBox="0 0 200 200" style={{ transform: 'rotate(-90deg)' }}>
                                                         <circle
                                                             cx="100"
                                                             cy="100"
-                                                            r="75"
+                                                            r="70"
                                                             fill="transparent"
                                                             stroke="#f1f5f9"
                                                             strokeWidth="24"
                                                         />
-                                                        {/* Segments */}
                                                         {donutSegments.map((segment) => {
                                                             const isHovered = hoveredDonut === segment.id;
                                                             return (
@@ -760,7 +831,7 @@ export default function ConcernAnalytics() {
                                                                     style={{
                                                                         transition: 'all 0.3s ease',
                                                                         cursor: 'pointer',
-                                                                        opacity: hoveredDonut && !isHovered ? 0.6 : 1
+                                                                        opacity: hoveredDonut && !isHovered ? 0.5 : 1
                                                                     }}
                                                                     onMouseEnter={() => setHoveredDonut(segment.id)}
                                                                     onMouseLeave={() => setHoveredDonut(null)}
@@ -769,17 +840,17 @@ export default function ConcernAnalytics() {
                                                         })}
                                                     </svg>
 
-                                                    {/* Donut Center Display */}
+                                                    {/* Center Display */}
                                                     <div
                                                         className="position-absolute top-50 start-50 translate-middle text-center"
                                                         style={{ pointerEvents: 'none' }}
                                                     >
                                                         <div className="display-6 fw-bold text-dark lh-1">{metrics.total}</div>
-                                                        <div className="text-muted small fw-semibold text-uppercase" style={{ fontSize: '0.75rem' }}>Concerns</div>
+                                                        <div className="text-muted small fw-semibold text-uppercase" style={{ fontSize: '0.72rem' }}>Total</div>
                                                     </div>
                                                 </div>
 
-                                                {/* Status Legend & Percentages */}
+                                                {/* Interactive Legend List */}
                                                 <div className="mt-2">
                                                     {donutSegments.map((item) => (
                                                         <div
@@ -787,7 +858,7 @@ export default function ConcernAnalytics() {
                                                             className="legend-item"
                                                             style={{
                                                                 borderLeft: `4px solid ${item.color}`,
-                                                                background: hoveredDonut === item.id ? '#f1f5f9' : '#f8fafc'
+                                                                background: hoveredDonut === item.id ? '#e2e8f0' : '#f8fafc'
                                                             }}
                                                             onMouseEnter={() => setHoveredDonut(item.id)}
                                                             onMouseLeave={() => setHoveredDonut(null)}
@@ -810,9 +881,9 @@ export default function ConcernAnalytics() {
                             </div>
                         </div>
 
-                        {/* Breakdown by Priority & Categories */}
+                        {/* Additional Breakdowns: Priority & Categories */}
                         <div className="row g-4 mb-4">
-                            {/* Priority Distribution */}
+                            {/* Priority Breakdown */}
                             <div className="col-lg-6">
                                 <div className="card analytics-card h-100">
                                     <div className="analytics-card-header">
@@ -852,10 +923,10 @@ export default function ConcernAnalytics() {
                                         <h5><span>🏷️</span> Concerns by Category / Type</h5>
                                     </div>
                                     <div className="card-body p-4">
-                                        {typeBreakdown.length === 0 ? (
-                                            <p className="text-muted text-center py-3">No concern types recorded.</p>
+                                        {categoryBreakdown.length === 0 ? (
+                                            <p className="text-muted text-center py-3">No categories recorded.</p>
                                         ) : (
-                                            typeBreakdown.map(([type, count]) => {
+                                            categoryBreakdown.map(([type, count]) => {
                                                 const pct = metrics.total > 0 ? Math.round((count / metrics.total) * 100) : 0;
                                                 return (
                                                     <div key={type} className="mb-3">
@@ -878,26 +949,20 @@ export default function ConcernAnalytics() {
                             </div>
                         </div>
 
-                        {/* Concerns In Selected Period Table */}
+                        {/* Filtered Concerns Records Table */}
                         <div className="card analytics-card">
                             <div className="analytics-card-header">
-                                <h5><span>📄</span> Concerns In Selected Period ({filteredComplaints.length})</h5>
-                                <div style={{ maxWidth: '300px' }}>
-                                    <input
-                                        type="text"
-                                        className="form-control form-control-sm"
-                                        placeholder="🔍 Search in this period..."
-                                        value={searchTable}
-                                        onChange={(e) => setSearchTable(e.target.value)}
-                                    />
-                                </div>
+                                <h5><span>📄</span> Filtered Concerns Records ({filteredComplaints.length})</h5>
+                                <button className="btn btn-sm btn-outline-primary" onClick={handleExportExcel}>
+                                    📊 Export to Excel
+                                </button>
                             </div>
                             <div className="card-body p-0">
                                 <div className="table-responsive">
                                     <table className="table table-hover analytics-table mb-0">
                                         <thead>
                                             <tr>
-                                                <th>#</th>
+                                                <th>Concern #</th>
                                                 <th>Title</th>
                                                 <th>Type</th>
                                                 <th>Student</th>
@@ -907,21 +972,21 @@ export default function ConcernAnalytics() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {displayedTableComplaints.length === 0 ? (
+                                            {filteredComplaints.length === 0 ? (
                                                 <tr>
                                                     <td colSpan="7" className="text-center py-4 text-muted">
-                                                        No concerns match the filter/search.
+                                                        No concerns match the active filters.
                                                     </td>
                                                 </tr>
                                             ) : (
-                                                displayedTableComplaints.slice(0, 50).map((c, idx) => {
+                                                filteredComplaints.map((c, idx) => {
                                                     const badgeInfo = getStatusBadgeLabel(c.stat_code);
                                                     return (
                                                         <tr key={c.complaint_id || idx}>
-                                                            <td className="text-muted small">{idx + 1}</td>
+                                                            <td className="fw-bold text-primary small">#{c.complaint_id}</td>
                                                             <td className="fw-semibold text-dark">{c.title || 'Untitled'}</td>
                                                             <td>
-                                                                <span className="badge bg-light text-dark border">{c.type || 'N/A'}</span>
+                                                                <span className="badge bg-light text-dark border">{c.type || 'General'}</span>
                                                             </td>
                                                             <td>{c.student_name || 'N/A'} {c.grade ? `(Gr ${c.grade})` : ''}</td>
                                                             <td>

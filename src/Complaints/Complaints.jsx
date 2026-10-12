@@ -138,9 +138,9 @@ function Complaints() {
                 .select('user_id')
                 .eq('role', 'representative')
                 .eq('grade', grade)
-                .maybeSingle(); // Get one representative, or null if none exist
+                .limit(1);
 
-            const assignedRepId = repData?.user_id || 0; // Default to 0 or null if no rep found
+            const assignedRepId = repData && repData.length > 0 ? repData[0].user_id : 0;
 
             if (repError) {
                 console.warn('Error fetching representative:', repError);
@@ -174,7 +174,8 @@ function Complaints() {
                 alert('Error submitting complaint. Please try again.');
             } else {
                 console.log('Complaint submitted successfully:', data);
-                alert('✅ Complaint submitted successfully!');
+                const complaintNumber = data && data.length > 0 ? data[0].complaint_id : '';
+                alert(`Complaint submitted successfully, your complaint number is #${complaintNumber}`);
                 // Reset form
                 setComplaint('');
                 setSubject('');
@@ -184,8 +185,12 @@ function Complaints() {
                 setStudentNo('');
                 setGrade('');
                 setSection('');
-                // Navigate back to dashboard
-                navigate('/dashboard');
+                // Navigate back to dashboard or home
+                if (isAnonymous) {
+                    navigate('/');
+                } else {
+                    navigate('/dashboard');
+                }
             }
         } catch (error) {
             console.error('Unexpected error:', error);
@@ -447,6 +452,8 @@ function Complaints() {
                                             )}
                                         </button>
                                     </div>
+
+
                                 </form>
                             </div>
                         </div>

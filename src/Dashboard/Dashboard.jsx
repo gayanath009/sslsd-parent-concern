@@ -335,59 +335,81 @@ function Dashboard() {
               </div>
               <div className="list-group list-group-flush">
                 {complaints.length > 0 ? (
-                  complaints.map((complaint) => (
-                    <div
-                      key={complaint.complaint_id}
-                      className="list-group-item list-group-item-action d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3"
-                      onClick={() => handleComplaintClick(complaint.complaint_id)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <div className="flex-grow-1">
-                        <small className="text-muted">{new Date(complaint.created_at).toLocaleDateString()}</small>
-                        <div className="fw-bold">{complaint.title}</div>
-                        <small className="text-muted">
-                          {complaint.description.length > 100
-                            ? complaint.description.substring(0, 100) + '...'
-                            : complaint.description}
-                          {complaint.description.length > 100 && (
-                            <span
-                              className="text-primary ms-2"
-                              style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                  complaints.map((complaint) => {
+                    const hasStaffResponse = complaint.stat_code === 2 || complaint.stat_code === 4;
+                    return (
+                      <div
+                        key={complaint.complaint_id}
+                        className={`list-group-item list-group-item-action d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 ${hasStaffResponse ? 'highlight-staff-response' : ''}`}
+                        onClick={() => handleComplaintClick(complaint.complaint_id)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div className="d-flex align-items-start gap-3 flex-grow-1">
+                          {/* First Column: Concern Number */}
+                          <div className="d-flex flex-column align-items-center justify-content-center px-3 py-2 rounded bg-light border text-center flex-shrink-0" style={{ minWidth: '95px' }}>
+                            <span className="text-muted text-uppercase" style={{ fontSize: '0.65rem', fontWeight: '700', letterSpacing: '0.5px' }}>Concern #</span>
+                            <span className="fw-bold fs-6 text-primary">#{complaint.complaint_id}</span>
+                          </div>
+
+                          <div className="flex-grow-1">
+                            <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                              <small className="text-muted">{new Date(complaint.created_at).toLocaleDateString()}</small>
+                              {complaint.stat_code === 2 && (
+                                <span className="badge bg-success" style={{ fontSize: '0.72rem' }}>
+                                  ✨ Response from Representative
+                                </span>
+                              )}
+                              {complaint.stat_code === 4 && (
+                                <span className="badge bg-success" style={{ fontSize: '0.72rem' }}>
+                                  ✨ Response from Principal
+                                </span>
+                              )}
+                            </div>
+                            <div className="fw-bold">{complaint.title}</div>
+                            <small className="text-muted">
+                              {complaint.description.length > 100
+                                ? complaint.description.substring(0, 100) + '...'
+                                : complaint.description}
+                              {complaint.description.length > 100 && (
+                                <span
+                                  className="text-primary ms-2"
+                                  style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedComplaint(complaint);
+                                    setShowReadMoreModal(true);
+                                  }}
+                                >
+                                  More
+                                </span>
+                              )}
+                            </small>
+                          </div>
+                        </div>
+
+                        <div className="d-flex align-items-center gap-2 flex-wrap">
+                          {(complaint.stat_code === 4 || complaint.stat_code === 2) && (
+                            <button
+                              className="btn btn-sm btn-outline-primary"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedComplaint(complaint);
-                                setShowReadMoreModal(true);
+                                setShowResponseBackModal(true);
                               }}
                             >
-                              More
-                            </span>
+                              Response back
+                            </button>
                           )}
-                        </small>
-
-                      </div>
-
-                      <div className="d-flex align-items-center gap-2 flex-wrap">
-                        {(complaint.stat_code === 4 || complaint.stat_code === 2) && (
-                          <button
-                            className="btn btn-sm btn-outline-primary"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedComplaint(complaint);
-                              setShowResponseBackModal(true);
-                            }}
+                          <span
+                            className="badge rounded-pill status-badge"
+                            style={{ backgroundColor: complaint.status_typ?.color || '#6c757d' }}
                           >
-                            Response back
-                          </button>
-                        )}
-                        <span
-                          className="badge rounded-pill status-badge"
-                          style={{ backgroundColor: complaint.status_typ?.color || '#6c757d' }}
-                        >
-                          <a href="#" style={{ color: 'white', fontWeight: 'bold' }}>{complaint.status_typ?.display}</a>
-                        </span>
+                            <a href="#" style={{ color: 'white', fontWeight: 'bold' }}>{complaint.status_typ?.display}</a>
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="p-4 text-center text-muted">
                     No active concerns found.
@@ -476,7 +498,10 @@ function Dashboard() {
               >X</button>
             </div>
             <div className="modal-body">
-
+              <div className="mb-3">
+                <label className="form-label fw-bold">Concern #:</label>
+                <p className="form-control-static fw-bold text-primary">#{selectedComplaint.complaint_id}</p>
+              </div>
               <div className="mb-3">
                 <label className="form-label fw-bold">Type:</label>
                 <p className="form-control-static">{selectedComplaint.type}</p>

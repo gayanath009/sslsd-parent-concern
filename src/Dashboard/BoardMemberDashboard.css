@@ -47,6 +47,14 @@
     border-left-color: #344386;
 }
 
+.stat-assigned {
+    border-left-color: #344386;
+}
+
+.stat-reviewed {
+    border-left-color: #5a67d8;
+}
+
 .stat-new {
     border-left-color: #17a2b8;
 }
@@ -57,6 +65,10 @@
 
 .stat-closed {
     border-left-color: #28a745;
+}
+
+.stat-forwarded {
+    border-left-color: #C47BE4;
 }
 
 .stat-icon {
@@ -113,7 +125,7 @@
 
 /* Complaints List */
 .complaints-list {
-    margin-top: 1rem;
+    margin-top: 0;
 }
 
 .complaint-card {
@@ -128,6 +140,22 @@
 .complaint-card:hover {
     transform: translateX(5px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.complaint-card.selected {
+    border-left-color: #5a67d8;
+    background: linear-gradient(to right, #f0f2ff 0%, white 100%);
+    box-shadow: 0 8px 25px rgba(90, 103, 216, 0.2);
+}
+
+.complaint-card.highlight-parent-reply {
+    background: #fff8e1 !important;
+    border-left: 6px solid #f59e0b !important;
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.25);
+}
+
+.complaint-card.highlight-parent-reply:hover {
+    background: #fef3c7 !important;
 }
 
 .complaint-title {
