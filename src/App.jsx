@@ -7,6 +7,7 @@ import Dashboard from './Dashboard/Dashboard';
 import Complaints from './Complaints/Complaints';
 import ProtectedRoute from './components/ProtectedRoute';
 import UpdateAdmission from './Dashboard/UpdateAdmission';
+import ConcernAnalytics from './Dashboard/ConcernAnalytics';
 
 function App() {
   return (
@@ -21,6 +22,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/analytics"
+            element={
+              <ProtectedRoute>
+                <ConcernAnalytics />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/concern-analytics"
+            element={
+              <ProtectedRoute>
+                <ConcernAnalytics />
               </ProtectedRoute>
             }
           />
