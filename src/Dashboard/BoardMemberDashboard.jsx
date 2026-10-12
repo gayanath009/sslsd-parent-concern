@@ -19,10 +19,11 @@ function BoardMemberDashboard() {
     const [comments, setComments] = useState([]);
     const [loadingComments, setLoadingComments] = useState(false);
     const [stats, setStats] = useState({
-        new: 0,
-        responded: 0,
+        assigned: 0,
         open: 0,
+        forwarded: 0,
         closed: 0,
+        total: 0
     });
 
     const handleLogout = async () => {
@@ -80,10 +81,11 @@ function BoardMemberDashboard() {
 
     const calculateStats = (data) => {
         const stats = {
-            new: data.filter(c => c.stat_code === 3).length,
-            responded: data.filter(c => c.stat_code === 2 || c.stat_code === 7 || c.stat_code === 9).length,
-            open: data.filter(c => c.stat_code === 4 || c.stat_code === 6).length,
-            closed: data.filter(c => c.stat_code === 5).length
+            assigned: data.filter(c => c.stat_code === 1).length,
+            open: data.filter(c => c.stat_code === 2 || c.stat_code === 9 || c.stat_code === 4 || c.stat_code === 6).length,
+            forwarded: data.filter(c => c.stat_code === 3).length,
+            closed: data.filter(c => c.stat_code === 7 || c.stat_code === 5).length,
+            total: data.length
         };
         setStats(stats);
     };
@@ -114,10 +116,15 @@ function BoardMemberDashboard() {
     };
 
     const filteredComplaints = complaints.filter(complaint => {
-        const matchesFilter = filter === 'all' ? true :
-            (filter === 4 ? (complaint.stat_code === 4 || complaint.stat_code === 6) :
-                (filter === 'responded' ? (complaint.stat_code === 2 || complaint.stat_code === 7 || complaint.stat_code === 9) :
-                    complaint.stat_code === filter));
+        const matchesFilter =
+            filter === 'all' ||
+            ((filter === 1 || filter === 'new') && complaint.stat_code === 1) ||
+            ((filter === 'open' || filter === 4) && (complaint.stat_code === 2 || complaint.stat_code === 9 || complaint.stat_code === 4 || complaint.stat_code === 6)) ||
+            ((filter === 7 || filter === 5 || filter === 'closed') && (complaint.stat_code === 7 || complaint.stat_code === 5)) ||
+            ((filter === 3 || filter === 'forwarded') && complaint.stat_code === 3) ||
+            (filter === 'responded' && (complaint.stat_code === 2 || complaint.stat_code === 7 || complaint.stat_code === 9)) ||
+            complaint.stat_code === filter;
+
         const cleanSearch = searchTerm.trim().replace(/^#/, '');
         const matchesSearch =
             (cleanSearch && complaint.complaint_id?.toString().includes(cleanSearch)) ||
@@ -158,7 +165,7 @@ function BoardMemberDashboard() {
                     'Section': complaint.section || '',
                     'Priority': complaint.priority || '',
                     'Type': complaint.type || '',
-                    'Status': complaint.status_typ?.display || complaint.stat_code || '',
+                    'Status': getStatusText(complaint.stat_code),
                     'Complaint Created Datetime': formatDate(complaint.created_at)
                 };
 
@@ -216,6 +223,26 @@ function BoardMemberDashboard() {
             case 'medium': return 'badge-medium';
             case 'low': return 'badge-low';
             default: return 'badge-default';
+        }
+    };
+
+    const getStatusText = (statCode) => {
+        switch (statCode) {
+            case 1:
+                return 'Initiated By Parent';
+            case 2:
+            case 9:
+            case 4:
+            case 6:
+                return 'Open';
+            case 3:
+                return 'Forwarded to Principal';
+            case 5:
+                return 'Closed';
+            case 7:
+                return 'Closed By PR';
+            default:
+                return statCode ? String(statCode) : '';
         }
     };
 
@@ -290,36 +317,22 @@ function BoardMemberDashboard() {
                 <div className="row g-4 mb-4">
                     <div className="col-md-6 col-lg-3">
                         <div
-                            className={`stat-card stat-reviewed ${filter === 'responded' ? 'border border-primary border-3 shadow' : ''}`}
-                            onClick={() => setFilter('responded')}
+                            className={`stat-card stat-assigned ${(filter === 1 || filter === 'new') ? 'border border-primary border-3 shadow' : ''}`}
+                            onClick={() => setFilter(1)}
                             style={{ cursor: 'pointer' }}
-                            title="Click to view Responded By PR concerns"
+                            title="Click to view New concerns"
                         >
                             <div className="stat-icon">📋</div>
                             <div className="stat-details">
-                                <h3>{stats.responded}</h3>
-                                <p>Responded By PR</p>
+                                <h3>{stats.assigned}</h3>
+                                <p>New</p>
                             </div>
                         </div>
                     </div>
                     <div className="col-md-6 col-lg-3">
                         <div
-                            className={`stat-card stat-assigned ${filter === 3 ? 'border border-primary border-3 shadow' : ''}`}
-                            onClick={() => setFilter(3)}
-                            style={{ cursor: 'pointer' }}
-                            title="Click to view With Principal concerns"
-                        >
-                            <div className="stat-icon">▶️</div>
-                            <div className="stat-details">
-                                <h3>{stats.new}</h3>
-                                <p>With Principal</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="col-md-6 col-lg-3">
-                        <div
-                            className={`stat-card stat-open ${filter === 4 ? 'border border-primary border-3 shadow' : ''}`}
-                            onClick={() => setFilter(4)}
+                            className={`stat-card stat-reviewed ${(filter === 'open' || filter === 4) ? 'border border-primary border-3 shadow' : ''}`}
+                            onClick={() => setFilter('open')}
                             style={{ cursor: 'pointer' }}
                             title="Click to view Open concerns"
                         >
@@ -332,8 +345,8 @@ function BoardMemberDashboard() {
                     </div>
                     <div className="col-md-6 col-lg-3">
                         <div
-                            className={`stat-card stat-closed ${filter === 5 ? 'border border-primary border-3 shadow' : ''}`}
-                            onClick={() => setFilter(5)}
+                            className={`stat-card stat-reviewed ${(filter === 7 || filter === 5 || filter === 'closed') ? 'border border-primary border-3 shadow' : ''}`}
+                            onClick={() => setFilter('closed')}
                             style={{ cursor: 'pointer' }}
                             title="Click to view Closed concerns"
                         >
@@ -341,6 +354,20 @@ function BoardMemberDashboard() {
                             <div className="stat-details">
                                 <h3>{stats.closed}</h3>
                                 <p>Closed</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-md-6 col-lg-3">
+                        <div
+                            className={`stat-card stat-forwarded ${(filter === 3 || filter === 'forwarded') ? 'border border-primary border-3 shadow' : ''}`}
+                            onClick={() => setFilter(3)}
+                            style={{ cursor: 'pointer' }}
+                            title="Click to view Forwarded concerns"
+                        >
+                            <div className="stat-icon">▶️</div>
+                            <div className="stat-details">
+                                <h3>{stats.forwarded}</h3>
+                                <p>Forwarded</p>
                             </div>
                         </div>
                     </div>
@@ -359,28 +386,28 @@ function BoardMemberDashboard() {
                                         All
                                     </button>
                                     <button
-                                        className={`btn w-100 ${filter === 'responded' ? 'btn-primary' : 'btn-outline-primary'}`}
-                                        onClick={() => setFilter('responded')}
+                                        className={`btn w-100 ${(filter === 1 || filter === 'new') ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        onClick={() => setFilter(1)}
                                     >
-                                        Responded By PR
+                                        New
                                     </button>
                                     <button
-                                        className={`btn w-100 ${filter === 3 ? 'btn-primary' : 'btn-outline-primary'}`}
-                                        onClick={() => setFilter(3)}
-                                    >
-                                        With Principal
-                                    </button>
-                                    <button
-                                        className={`btn w-100 ${filter === 4 ? 'btn-primary' : 'btn-outline-primary'}`}
-                                        onClick={() => setFilter(4)}
+                                        className={`btn w-100 ${(filter === 'open' || filter === 4) ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        onClick={() => setFilter('open')}
                                     >
                                         Open
                                     </button>
                                     <button
-                                        className={`btn w-100 ${filter === 5 ? 'btn-primary' : 'btn-outline-primary'}`}
-                                        onClick={() => setFilter(5)}
+                                        className={`btn w-100 ${(filter === 7 || filter === 5 || filter === 'closed') ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        onClick={() => setFilter('closed')}
                                     >
                                         Closed
+                                    </button>
+                                    <button
+                                        className={`btn w-100 ${(filter === 3 || filter === 'forwarded') ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        onClick={() => setFilter(3)}
+                                    >
+                                        Forwarded
                                     </button>
                                 </div>
                             </div>
