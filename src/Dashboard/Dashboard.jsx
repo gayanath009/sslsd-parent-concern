@@ -10,7 +10,7 @@ import './Dashboard.css';
 
 function Dashboard() {
   const navigate = useNavigate();
-  const { email, name, setEmail, setName, role, setRole, userId, setUserId } = useUser();
+  const { email, name, setEmail, setName, role, setRole, userId, setUserId, grade, setGrade } = useUser();
   const [loading, setLoading] = useState(true);
 
   // Moved Logic (Complaints) to top level
@@ -29,6 +29,7 @@ function Dashboard() {
     setName('');
     setRole('');
     setUserId(null);
+    if (setGrade) setGrade('');
     navigate('/login');
   };
 
@@ -57,7 +58,7 @@ function Dashboard() {
         // ---- Check if record exists ----
         const { data: existingRecord } = await supabase
           .from('appusers')
-          .select('user_id, role, is_active')
+          .select('user_id, role, is_active, grade')
           .eq('email', email)
           .maybeSingle();
 
@@ -73,7 +74,7 @@ function Dashboard() {
               is_active: true,
               created_at: new Date().toISOString(),
             })
-            .select('user_id, role, is_active')
+            .select('user_id, role, is_active, grade')
             .single();
 
           if (insertError) {
@@ -82,6 +83,7 @@ function Dashboard() {
             console.log('Record inserted successfully');
             setRole(newUser?.role || 'parent');
             setUserId(newUser?.user_id || null);
+            if (setGrade) setGrade(newUser?.grade || '');
           }
         } else {
           if (existingRecord.is_active === false) {
@@ -92,6 +94,7 @@ function Dashboard() {
           }
           setRole(existingRecord.role || 'parent');
           setUserId(existingRecord.user_id || null);
+          if (setGrade) setGrade(existingRecord.grade || '');
         }
       } else {
         navigate('/login');
@@ -101,7 +104,7 @@ function Dashboard() {
     };
 
     fetchUserInfo();
-  }, [navigate, setEmail, setName, setRole, setUserId]);
+  }, [navigate, setEmail, setName, setRole, setUserId, setGrade]);
   useEffect(() => {
     const getComplaints = async () => {
       if (!email || role !== 'parent') return; // fetch for parents
@@ -253,6 +256,21 @@ function Dashboard() {
       console.error('Unexpected error:', error);
       alert('❌ An unexpected error occurred');
     }
+  };
+
+  const formatGradeWithSection = (grade, section) => {
+    if (!grade && !section) return 'N/A';
+    let gradeStr = '';
+    if (grade) {
+      const str = String(grade).trim();
+      if (str === 'L' || str === 'LR') gradeStr = 'Grade LR';
+      else if (str === 'U' || str === 'UR') gradeStr = 'Grade UR';
+      else if (str.toLowerCase().startsWith('grade')) gradeStr = str;
+      else gradeStr = `Grade ${str}`;
+    }
+    const secStr = section ? String(section).trim() : '';
+    if (gradeStr && secStr) return `${gradeStr} ${secStr}`;
+    return gradeStr || `Section ${secStr}`;
   };
 
   const getPriorityBadgeClass = (priority) => {

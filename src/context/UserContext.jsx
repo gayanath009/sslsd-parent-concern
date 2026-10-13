@@ -12,6 +12,7 @@ export function UserProvider({ children }) {
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
   const [userId, setUserId] = useState(null);
+  const [grade, setGrade] = useState('');
 
   const value = {
     email,
@@ -22,6 +23,8 @@ export function UserProvider({ children }) {
     setRole,
     userId,
     setUserId,
+    grade,
+    setGrade,
   };
 
   return (

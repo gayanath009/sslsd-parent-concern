@@ -21,12 +21,11 @@ function PrincipalDashboard() {
     const [comments, setComments] = useState([]);
     const [loadingComments, setLoadingComments] = useState(false);
     const [stats, setStats] = useState({
-        //total: 0,
-        new: 0,
+        initiated: 0,
         responded: 0,
+        new: 0,
         open: 0,
         closed: 0,
-        //urgent: 0
     });
 
     const handleLogout = async () => {
@@ -86,12 +85,11 @@ function PrincipalDashboard() {
 
     const calculateStats = (data) => {
         const stats = {
-            //total: data.length,
-            new: data.filter(c => c.stat_code === 3).length,
+            initiated: data.filter(c => c.stat_code === 1).length,
             responded: data.filter(c => c.stat_code === 2 || c.stat_code === 7 || c.stat_code === 9).length,
+            new: data.filter(c => c.stat_code === 3).length,
             open: data.filter(c => c.stat_code === 4 || c.stat_code === 6).length,
             closed: data.filter(c => c.stat_code === 5).length
-
         };
         setStats(stats);
     };
@@ -189,10 +187,15 @@ function PrincipalDashboard() {
 
 
     const filteredComplaints = complaints.filter(complaint => {
-        const matchesFilter = filter === 'all' ? true :
-            (filter === 4 ? (complaint.stat_code === 4 || complaint.stat_code === 6) :
-                (filter === 'responded' ? (complaint.stat_code === 2 || complaint.stat_code === 7 || complaint.stat_code === 9) :
-                    complaint.stat_code === filter));
+        const matchesFilter =
+            filter === 'all' ||
+            ((filter === 1 || filter === 'initiated') && complaint.stat_code === 1) ||
+            (filter === 'responded' && (complaint.stat_code === 2 || complaint.stat_code === 7 || complaint.stat_code === 9)) ||
+            ((filter === 3 || filter === 'new') && complaint.stat_code === 3) ||
+            ((filter === 4 || filter === 'open') && (complaint.stat_code === 4 || complaint.stat_code === 6)) ||
+            ((filter === 5 || filter === 'closed') && complaint.stat_code === 5) ||
+            complaint.stat_code === filter;
+
         const cleanSearch = searchTerm.trim().replace(/^#/, '');
         const matchesSearch =
             (cleanSearch && complaint.complaint_id?.toString().includes(cleanSearch)) ||
@@ -284,6 +287,21 @@ function PrincipalDashboard() {
         }
     };
 
+    const formatGradeWithSection = (grade, section) => {
+        if (!grade && !section) return 'N/A';
+        let gradeStr = '';
+        if (grade) {
+            const str = String(grade).trim();
+            if (str === 'L' || str === 'LR') gradeStr = 'Grade LR';
+            else if (str === 'U' || str === 'UR') gradeStr = 'Grade UR';
+            else if (str.toLowerCase().startsWith('grade')) gradeStr = str;
+            else gradeStr = `Grade ${str}`;
+        }
+        const secStr = section ? String(section).trim() : '';
+        if (gradeStr && secStr) return `${gradeStr} ${secStr}`;
+        return gradeStr || `Section ${secStr}`;
+    };
+
     const getPriorityBadgeClass = (priority) => {
         switch (priority) {
             case 'urgent': return 'badge-urgent';
@@ -361,10 +379,38 @@ function PrincipalDashboard() {
             {/* Main Content */}
             <div className="container-fluid py-4">
                 {/* Statistics Cards */}
-                <div className="row g-4 mb-4">
-                    <div className="col-md-6 col-lg-4">
+                <div className="row g-3 mb-4">
+                    <div className="col-12 col-sm-6 col-md-4 col-xl">
                         <div
-                            className={`stat-card stat-new ${filter === 3 ? 'border border-info border-3 shadow' : ''}`}
+                            className={`stat-card stat-initiated ${(filter === 1 || filter === 'initiated') ? 'border border-info border-3 shadow' : ''}`}
+                            onClick={() => setFilter(1)}
+                            style={{ cursor: 'pointer' }}
+                            title="Click to view Initiated concerns"
+                        >
+                            <div className="stat-icon">📋</div>
+                            <div className="stat-details">
+                                <h3>{stats.initiated}</h3>
+                                <p>Initiated</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-12 col-sm-6 col-md-4 col-xl">
+                        <div
+                            className={`stat-card stat-responded ${filter === 'responded' ? 'border border-warning border-3 shadow' : ''}`}
+                            onClick={() => setFilter('responded')}
+                            style={{ cursor: 'pointer' }}
+                            title="Click to view Responded By PR concerns"
+                        >
+                            <div className="stat-icon">💬</div>
+                            <div className="stat-details">
+                                <h3>{stats.responded}</h3>
+                                <p>Responded By PR</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="col-12 col-sm-6 col-md-4 col-xl">
+                        <div
+                            className={`stat-card stat-new ${(filter === 3 || filter === 'new') ? 'border border-info border-3 shadow' : ''}`}
                             onClick={() => setFilter(3)}
                             style={{ cursor: 'pointer' }}
                             title="Click to view New concerns"
@@ -376,9 +422,9 @@ function PrincipalDashboard() {
                             </div>
                         </div>
                     </div>
-                    <div className="col-md-6 col-lg-4">
+                    <div className="col-12 col-sm-6 col-md-4 col-xl">
                         <div
-                            className={`stat-card stat-open ${filter === 4 ? 'border border-primary border-3 shadow' : ''}`}
+                            className={`stat-card stat-open ${(filter === 4 || filter === 'open') ? 'border border-primary border-3 shadow' : ''}`}
                             onClick={() => setFilter(4)}
                             style={{ cursor: 'pointer' }}
                             title="Click to view Open concerns"
@@ -390,9 +436,9 @@ function PrincipalDashboard() {
                             </div>
                         </div>
                     </div>
-                    <div className="col-md-6 col-lg-4">
+                    <div className="col-12 col-sm-6 col-md-4 col-xl">
                         <div
-                            className={`stat-card stat-closed ${filter === 5 ? 'border border-success border-3 shadow' : ''}`}
+                            className={`stat-card stat-closed ${(filter === 5 || filter === 'closed') ? 'border border-success border-3 shadow' : ''}`}
                             onClick={() => setFilter(5)}
                             style={{ cursor: 'pointer' }}
                             title="Click to view Closed concerns"
@@ -410,7 +456,7 @@ function PrincipalDashboard() {
                 <div className="card filter-card mb-4">
                     <div className="card-body">
                         <div className="row align-items-center">
-                            <div className="col-md-5 mb-3 mb-md-0">
+                            <div className="col-lg-6 col-md-12 mb-3 mb-lg-0">
                                 <div className="btn-group w-100" role="group">
                                     <button
                                         className={`btn w-100 ${filter === 'all' ? 'btn-primary' : 'btn-outline-primary'}`}
@@ -419,33 +465,38 @@ function PrincipalDashboard() {
                                         All
                                     </button>
                                     <button
+                                        className={`btn w-100 ${(filter === 1 || filter === 'initiated') ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        onClick={() => setFilter(1)}
+                                    >
+                                        Initiated
+                                    </button>
+                                    <button
                                         className={`btn w-100 ${filter === 'responded' ? 'btn-primary' : 'btn-outline-primary'}`}
                                         onClick={() => setFilter('responded')}
                                     >
                                         Responded By PR
                                     </button>
                                     <button
-                                        className={`btn w-100 ${filter === 3 ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        className={`btn w-100 ${(filter === 3 || filter === 'new') ? 'btn-primary' : 'btn-outline-primary'}`}
                                         onClick={() => setFilter(3)}
                                     >
                                         New
                                     </button>
-
                                     <button
-                                        className={`btn w-100 ${filter === 4 ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        className={`btn w-100 ${(filter === 4 || filter === 'open') ? 'btn-primary' : 'btn-outline-primary'}`}
                                         onClick={() => setFilter(4)}
                                     >
                                         Open
                                     </button>
                                     <button
-                                        className={`btn w-100 ${filter === 5 ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        className={`btn w-100 ${(filter === 5 || filter === 'closed') ? 'btn-primary' : 'btn-outline-primary'}`}
                                         onClick={() => setFilter(5)}
                                     >
                                         Closed
                                     </button>
                                 </div>
                             </div>
-                            <div className="col-md-2 mb-3 mb-md-0">
+                            <div className="col-lg-2 col-md-4 mb-3 mb-lg-0">
                                 <select
                                     className="form-select"
                                     value={priorityFilter}
@@ -458,16 +509,16 @@ function PrincipalDashboard() {
                                     <option value="urgent">Urgent</option>
                                 </select>
                             </div>
-                            <div className="col-md-3">
+                            <div className="col-lg-2 col-md-5 mb-3 mb-lg-0">
                                 <input
                                     type="text"
                                     className="form-control"
-                                    placeholder="🔍 Search complaints..."
+                                    placeholder="🔍 Search concerns..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
-                            <div className="col-md-2">
+                            <div className="col-lg-2 col-md-3">
                                 <button className="btn btn-primary w-100" onClick={handleExport}>
                                     📊 Export
                                 </button>
@@ -572,9 +623,9 @@ function PrincipalDashboard() {
                                             </div>
                                         </div>
                                     </div>
-                            </div>
-                        );
-                    })
+                                </div>
+                            );
+                        })
                     )}
                 </div>
             </div>

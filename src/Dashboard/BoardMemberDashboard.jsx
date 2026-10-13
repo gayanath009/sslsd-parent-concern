@@ -216,6 +216,21 @@ function BoardMemberDashboard() {
         }
     };
 
+    const formatGradeWithSection = (grade, section) => {
+        if (!grade && !section) return 'N/A';
+        let gradeStr = '';
+        if (grade) {
+            const str = String(grade).trim();
+            if (str === 'L' || str === 'LR') gradeStr = 'Grade LR';
+            else if (str === 'U' || str === 'UR') gradeStr = 'Grade UR';
+            else if (str.toLowerCase().startsWith('grade')) gradeStr = str;
+            else gradeStr = `Grade ${str}`;
+        }
+        const secStr = section ? String(section).trim() : '';
+        if (gradeStr && secStr) return `${gradeStr} ${secStr}`;
+        return gradeStr || `Section ${secStr}`;
+    };
+
     const getPriorityBadgeClass = (priority) => {
         switch (priority) {
             case 'urgent': return 'badge-urgent';
@@ -572,6 +587,10 @@ function BoardMemberDashboard() {
                             <div className="mb-3">
                                 <label className="form-label fw-bold">Student Number:</label>
                                 <p className="form-control-static">{selectedComplaint.student_no}</p>
+                            </div>
+                            <div className="mb-3">
+                                <label className="form-label fw-bold">Grade:</label>
+                                <p className="form-control-static">{formatGradeWithSection(selectedComplaint.grade, selectedComplaint.section)}</p>
                             </div>
                             <div className="mb-3">
                                 <label className="form-label fw-bold">Priority:</label>

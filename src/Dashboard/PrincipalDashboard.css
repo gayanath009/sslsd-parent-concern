@@ -47,6 +47,14 @@
     border-left-color: #344386;
 }
 
+.stat-initiated {
+    border-left-color: #219ebc;
+}
+
+.stat-responded {
+    border-left-color: #e5ba41;
+}
+
 .stat-new {
     border-left-color: #17a2b8;
 }

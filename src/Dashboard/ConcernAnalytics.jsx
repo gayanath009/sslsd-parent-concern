@@ -38,6 +38,7 @@ export default function ConcernAnalytics() {
 
     const [hoveredBar, setHoveredBar] = useState(null);
     const [hoveredDonut, setHoveredDonut] = useState(null);
+    const [hoveredGrade, setHoveredGrade] = useState(null);
 
     useEffect(() => {
         fetchComplaints();
@@ -289,6 +290,121 @@ export default function ConcernAnalytics() {
             .sort((a, b) => b[1] - a[1])
             .slice(0, 5);
     }, [filteredComplaints]);
+
+    // Standard school grades list
+    const standardGradesList = useMemo(() => [
+        { key: 'LR', label: 'LR', fullLabel: 'Grade LR' },
+        { key: 'UR', label: 'UR', fullLabel: 'Grade UR' },
+        { key: '1', label: 'Gr 1', fullLabel: 'Grade 1' },
+        { key: '2', label: 'Gr 2', fullLabel: 'Grade 2' },
+        { key: '3', label: 'Gr 3', fullLabel: 'Grade 3' },
+        { key: '4', label: 'Gr 4', fullLabel: 'Grade 4' },
+        { key: '5', label: 'Gr 5', fullLabel: 'Grade 5' },
+        { key: '6', label: 'Gr 6', fullLabel: 'Grade 6' },
+        { key: '7', label: 'Gr 7', fullLabel: 'Grade 7' },
+        { key: '8', label: 'Gr 8', fullLabel: 'Grade 8' },
+        { key: '9', label: 'Gr 9', fullLabel: 'Grade 9' },
+        { key: '10', label: 'Gr 10', fullLabel: 'Grade 10' },
+        { key: '11', label: 'Gr 11', fullLabel: 'Grade 11' },
+        { key: '12', label: 'Gr 12', fullLabel: 'Grade 12' },
+        { key: '13', label: 'Gr 13', fullLabel: 'Grade 13' }
+    ], []);
+
+    // Normalize grade strings
+    const normalizeGradeKey = (rawGrade) => {
+        if (!rawGrade) return 'Unassigned';
+        const str = String(rawGrade).trim();
+        if (str === 'L' || str === 'LR') return 'LR';
+        if (str === 'U' || str === 'UR') return 'UR';
+        const clean = str.replace(/^Grade\s*/i, '').trim();
+        return clean || 'Unassigned';
+    };
+
+    // Concerns by Grade breakdown
+    const gradeBreakdown = useMemo(() => {
+        const gradeMap = {};
+        standardGradesList.forEach(g => {
+            gradeMap[g.key] = {
+                key: g.key,
+                label: g.label,
+                fullLabel: g.fullLabel,
+                total: 0,
+                initiated: 0,
+                forwarded: 0,
+                open: 0,
+                closed: 0
+            };
+        });
+
+        let unassignedStats = {
+            key: 'Unassigned',
+            label: 'Other',
+            fullLabel: 'Unassigned / Other',
+            total: 0,
+            initiated: 0,
+            forwarded: 0,
+            open: 0,
+            closed: 0
+        };
+
+        filteredComplaints.forEach((c) => {
+            const raw = c.grade;
+            const norm = normalizeGradeKey(raw);
+            const cat = getStatusCategory(c.stat_code);
+
+            if (gradeMap[norm]) {
+                gradeMap[norm].total++;
+                if (cat === 'new') gradeMap[norm].initiated++;
+                else if (cat === 'forwarded') gradeMap[norm].forwarded++;
+                else if (cat === 'open') gradeMap[norm].open++;
+                else if (cat === 'closed') gradeMap[norm].closed++;
+            } else if (norm === 'Unassigned') {
+                unassignedStats.total++;
+                if (cat === 'new') unassignedStats.initiated++;
+                else if (cat === 'forwarded') unassignedStats.forwarded++;
+                else if (cat === 'open') unassignedStats.open++;
+                else if (cat === 'closed') unassignedStats.closed++;
+            } else {
+                if (!gradeMap[norm]) {
+                    gradeMap[norm] = {
+                        key: norm,
+                        label: `Gr ${norm}`,
+                        fullLabel: `Grade ${norm}`,
+                        total: 0,
+                        initiated: 0,
+                        forwarded: 0,
+                        open: 0,
+                        closed: 0
+                    };
+                }
+                gradeMap[norm].total++;
+                if (cat === 'new') gradeMap[norm].initiated++;
+                else if (cat === 'forwarded') gradeMap[norm].forwarded++;
+                else if (cat === 'open') gradeMap[norm].open++;
+                else if (cat === 'closed') gradeMap[norm].closed++;
+            }
+        });
+
+        const list = standardGradesList.map(g => gradeMap[g.key]);
+        if (unassignedStats.total > 0) {
+            list.push(unassignedStats);
+        }
+        return list;
+    }, [filteredComplaints, standardGradesList]);
+
+    // Max value for grade chart scale
+    const maxGradeVal = useMemo(() => {
+        if (!gradeBreakdown || gradeBreakdown.length === 0) return 5;
+        const max = Math.max(...gradeBreakdown.map((d) => d.total), 1);
+        return Math.max(max + 1, Math.ceil(max * 1.25));
+    }, [gradeBreakdown]);
+
+    // Ranked list of grades with active concerns
+    const rankedGradesWithConcerns = useMemo(() => {
+        return [...gradeBreakdown]
+            .filter(g => g.total > 0)
+            .sort((a, b) => b.total - a.total);
+    }, [gradeBreakdown]);
 
     // Export period to Excel
     const handleExportExcel = () => {
@@ -876,6 +992,262 @@ export default function ConcernAnalytics() {
                                                 </div>
                                             </>
                                         )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Graph 3: Concerns by Grade */}
+                        <div className="row g-4 mb-4">
+                            <div className="col-12">
+                                <div className="card analytics-card">
+                                    <div className="analytics-card-header">
+                                        <h5>
+                                            <span>🎓</span> Concerns by Grade
+                                        </h5>
+                                        <div className="d-flex align-items-center gap-3 small flex-wrap">
+                                            <span className="badge bg-light text-dark border">
+                                                {rankedGradesWithConcerns.length} Grade{rankedGradesWithConcerns.length === 1 ? '' : 's'} with Concerns
+                                            </span>
+                                            <div className="d-none d-md-flex align-items-center gap-2">
+                                                <span className="d-flex align-items-center gap-1">
+                                                    <span style={{ width: 10, height: 10, background: '#219ebc', borderRadius: 2 }}></span> Initiated
+                                                </span>
+                                                <span className="d-flex align-items-center gap-1">
+                                                    <span style={{ width: 10, height: 10, background: '#9b5de5', borderRadius: 2 }}></span> With Principal
+                                                </span>
+                                                <span className="d-flex align-items-center gap-1">
+                                                    <span style={{ width: 10, height: 10, background: '#e5ba41', borderRadius: 2 }}></span> Open
+                                                </span>
+                                                <span className="d-flex align-items-center gap-1">
+                                                    <span style={{ width: 10, height: 10, background: '#10b981', borderRadius: 2 }}></span> Closed
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="card-body p-4 position-relative">
+                                        <div className="row g-4 align-items-center">
+                                            {/* Left: Interactive SVG Bar Chart across all grades */}
+                                            <div className="col-xl-8 col-lg-7">
+                                                <div style={{ width: '100%', height: 290 }} className="position-relative">
+                                                    <svg viewBox="0 0 820 290" preserveAspectRatio="none" style={{ height: '100%', width: '100%' }}>
+                                                        {/* Y-Axis Grid Lines & Values */}
+                                                        {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+                                                            const y = 235 - ratio * 185;
+                                                            const val = Math.round(ratio * maxGradeVal);
+                                                            return (
+                                                                <g key={idx}>
+                                                                    <line x1="45" y1={y} x2="800" y2={y} className="chart-grid-line" />
+                                                                    <text x="38" y={y + 4} textAnchor="end" className="chart-axis-text">
+                                                                        {val}
+                                                                    </text>
+                                                                </g>
+                                                            );
+                                                        })}
+
+                                                        {/* Stacked Grade Columns */}
+                                                        {(() => {
+                                                            const plotWidth = 750;
+                                                            const n = gradeBreakdown.length;
+                                                            const slotWidth = plotWidth / n;
+                                                            const barWidth = Math.max(16, Math.min(36, slotWidth * 0.65));
+
+                                                            return gradeBreakdown.map((item, index) => {
+                                                                const x = 50 + index * slotWidth + (slotWidth - barWidth) / 2;
+                                                                const closedH = (item.closed / maxGradeVal) * 185;
+                                                                const openH = (item.open / maxGradeVal) * 185;
+                                                                const fwdH = (item.forwarded / maxGradeVal) * 185;
+                                                                const initH = (item.initiated / maxGradeVal) * 185;
+
+                                                                const yBase = 235;
+                                                                const yClosed = yBase - closedH;
+                                                                const yOpen = yClosed - openH;
+                                                                const yFwd = yOpen - fwdH;
+                                                                const yInit = yFwd - initH;
+
+                                                                return (
+                                                                    <g
+                                                                        key={item.key}
+                                                                        onMouseEnter={() => setHoveredGrade(item)}
+                                                                        onMouseLeave={() => setHoveredGrade(null)}
+                                                                        style={{ cursor: 'pointer' }}
+                                                                    >
+                                                                        {/* Background hover highlight area */}
+                                                                        <rect
+                                                                            x={x - 4}
+                                                                            y={40}
+                                                                            width={barWidth + 8}
+                                                                            height={205}
+                                                                            fill={hoveredGrade?.key === item.key ? 'rgba(0, 111, 60, 0.08)' : 'transparent'}
+                                                                            rx="6"
+                                                                        />
+
+                                                                        {/* Base line for 0 items */}
+                                                                        {item.total === 0 && (
+                                                                            <line
+                                                                                x1={x}
+                                                                                y1={yBase}
+                                                                                x2={x + barWidth}
+                                                                                y2={yBase}
+                                                                                stroke="#cbd5e1"
+                                                                                strokeWidth="2"
+                                                                            />
+                                                                        )}
+
+                                                                        {/* Closed Stack Segment */}
+                                                                        {closedH > 0 && (
+                                                                            <rect
+                                                                                x={x}
+                                                                                y={yClosed}
+                                                                                width={barWidth}
+                                                                                height={closedH}
+                                                                                fill="#10b981"
+                                                                                rx="3"
+                                                                                className="chart-bar-rect"
+                                                                            />
+                                                                        )}
+
+                                                                        {/* Open Stack Segment */}
+                                                                        {openH > 0 && (
+                                                                            <rect
+                                                                                x={x}
+                                                                                y={yOpen}
+                                                                                width={barWidth}
+                                                                                height={openH}
+                                                                                fill="#e5ba41"
+                                                                                rx="3"
+                                                                                className="chart-bar-rect"
+                                                                            />
+                                                                        )}
+
+                                                                        {/* Forwarded Stack Segment */}
+                                                                        {fwdH > 0 && (
+                                                                            <rect
+                                                                                x={x}
+                                                                                y={yFwd}
+                                                                                width={barWidth}
+                                                                                height={fwdH}
+                                                                                fill="#9b5de5"
+                                                                                rx="3"
+                                                                                className="chart-bar-rect"
+                                                                            />
+                                                                        )}
+
+                                                                        {/* Initiated Stack Segment */}
+                                                                        {initH > 0 && (
+                                                                            <rect
+                                                                                x={x}
+                                                                                y={yInit}
+                                                                                width={barWidth}
+                                                                                height={initH}
+                                                                                fill="#219ebc"
+                                                                                rx="3"
+                                                                                className="chart-bar-rect"
+                                                                            />
+                                                                        )}
+
+                                                                        {/* Total count on top of bar */}
+                                                                        {item.total > 0 && (
+                                                                            <text
+                                                                                x={x + barWidth / 2}
+                                                                                y={Math.max(28, yInit - 6)}
+                                                                                textAnchor="middle"
+                                                                                fontSize="11"
+                                                                                fontWeight="700"
+                                                                                fill="#1e293b"
+                                                                            >
+                                                                                {item.total}
+                                                                            </text>
+                                                                        )}
+
+                                                                        {/* X-Axis Grade Label */}
+                                                                        <text
+                                                                            x={x + barWidth / 2}
+                                                                            y={258}
+                                                                            textAnchor="middle"
+                                                                            fontSize="11"
+                                                                            fontWeight={hoveredGrade?.key === item.key ? '800' : '600'}
+                                                                            fill={hoveredGrade?.key === item.key ? '#006f3c' : '#64748b'}
+                                                                        >
+                                                                            {item.label}
+                                                                        </text>
+                                                                    </g>
+                                                                );
+                                                            });
+                                                        })()}
+                                                    </svg>
+
+                                                    {/* Hover Tooltip */}
+                                                    {hoveredGrade && (
+                                                        <div
+                                                            className="position-absolute bg-dark text-white p-2 rounded shadow-lg chart-tooltip"
+                                                            style={{
+                                                                top: '8px',
+                                                                right: '16px',
+                                                                fontSize: '0.85rem',
+                                                                zIndex: 10,
+                                                                border: '1px solid rgba(255,255,255,0.2)'
+                                                            }}
+                                                        >
+                                                            <strong className="d-block mb-1 text-info">{hoveredGrade.fullLabel}</strong>
+                                                            <div className="d-flex justify-content-between gap-3">
+                                                                <span>Total Concerns:</span>
+                                                                <strong>{hoveredGrade.total}</strong>
+                                                            </div>
+                                                            <div className="d-flex justify-content-between gap-3" style={{ color: '#10b981' }}>
+                                                                <span>Closed:</span>
+                                                                <strong>{hoveredGrade.closed}</strong>
+                                                            </div>
+                                                            <div className="d-flex justify-content-between gap-3" style={{ color: '#e5ba41' }}>
+                                                                <span>Open:</span>
+                                                                <strong>{hoveredGrade.open}</strong>
+                                                            </div>
+                                                            <div className="d-flex justify-content-between gap-3" style={{ color: '#9b5de5' }}>
+                                                                <span>With Principal:</span>
+                                                                <strong>{hoveredGrade.forwarded}</strong>
+                                                            </div>
+                                                            <div className="d-flex justify-content-between gap-3" style={{ color: '#219ebc' }}>
+                                                                <span>Initiated:</span>
+                                                                <strong>{hoveredGrade.initiated}</strong>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Right Column: Progress Bar Breakdown by Grade */}
+                                            <div className="col-xl-4 col-lg-5">
+                                                <div className="p-3 bg-light rounded-3 border" style={{ maxHeight: '290px', overflowY: 'auto' }}>
+                                                    <div className="d-flex justify-content-between align-items-center mb-3">
+                                                        <span className="small fw-bold text-uppercase text-muted">Ranked by Concerns</span>
+                                                        <span className="badge bg-secondary">{metrics.total} Total</span>
+                                                    </div>
+                                                    {rankedGradesWithConcerns.length === 0 ? (
+                                                        <div className="text-center py-4 text-muted small">
+                                                            No concerns recorded for any grade in the selected period.
+                                                        </div>
+                                                    ) : (
+                                                        rankedGradesWithConcerns.map((g) => {
+                                                            const pct = metrics.total > 0 ? Math.round((g.total / metrics.total) * 100) : 0;
+                                                            return (
+                                                                <div key={g.key} className="mb-3">
+                                                                    <div className="d-flex justify-content-between small fw-bold mb-1">
+                                                                        <span>{g.fullLabel}</span>
+                                                                        <span>{g.total} ({pct}%)</span>
+                                                                    </div>
+                                                                    <div className="priority-progress-bar">
+                                                                        <div
+                                                                            className="priority-progress-fill"
+                                                                            style={{ width: `${pct}%`, backgroundColor: '#006f3c' }}
+                                                                        ></div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

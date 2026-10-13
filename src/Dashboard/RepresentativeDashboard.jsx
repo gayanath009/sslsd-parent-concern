@@ -7,9 +7,10 @@ import './RepresentativeDashboard.css';
 
 function RepresentativeDashboard() {
     const navigate = useNavigate();
-    const { email, name, userId, setEmail, setName, setRole, setUserId } = useUser();
+    const { email, name, userId, setEmail, setName, setRole, setUserId, grade: contextGrade, setGrade } = useUser();
     const [complaints, setComplaints] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [userGrade, setUserGrade] = useState(contextGrade || '');
     const [filter, setFilter] = useState(1);
     const [priorityFilter, setPriorityFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
@@ -32,26 +33,84 @@ function RepresentativeDashboard() {
         total: 0
     });
 
+    const getGradeDisplay = (gradeValue) => {
+        if (!gradeValue) return 'N/A';
+        const str = String(gradeValue).trim();
+        if (str === 'L' || str === 'LR') return 'Grade LR';
+        if (str === 'U' || str === 'UR') return 'Grade UR';
+        if (str.toLowerCase().startsWith('grade')) return str;
+        return `Grade ${str}`;
+    };
+
+    const formatGradeWithSection = (grade, section) => {
+        if (!grade && !section) return 'N/A';
+        let gradeStr = '';
+        if (grade) {
+            const str = String(grade).trim();
+            if (str === 'L' || str === 'LR') gradeStr = 'Grade LR';
+            else if (str === 'U' || str === 'UR') gradeStr = 'Grade UR';
+            else if (str.toLowerCase().startsWith('grade')) gradeStr = str;
+            else gradeStr = `Grade ${str}`;
+        }
+        const secStr = section ? String(section).trim() : '';
+        if (gradeStr && secStr) return `${gradeStr} ${secStr}`;
+        return gradeStr || `Section ${secStr}`;
+    };
+
     const handleLogout = async () => {
         await supabase.auth.signOut();
         setEmail('');
         setName('');
         setRole('');
         setUserId(null);
+        if (setGrade) setGrade('');
         navigate('/login');
     };
 
     useEffect(() => {
         fetchComplaints();
-    }, [userId]);
+    }, [userId, email]);
 
     const fetchComplaints = async () => {
         setLoading(true);
         try {
-            // Fetch complaints without foreign key relationship
+            // First fetch the latest grade assigned to this representative
+            let currentGrade = contextGrade;
+            if (userId || email) {
+                let userQuery = supabase
+                    .from('appusers')
+                    .select('grade');
+                if (userId) {
+                    userQuery = userQuery.eq('user_id', userId);
+                } else {
+                    userQuery = userQuery.eq('email', email);
+                }
+                const { data: userData, error: userError } = await userQuery.maybeSingle();
+                if (!userError && userData) {
+                    currentGrade = userData.grade || '';
+                    if (setGrade) setGrade(userData.grade || '');
+                }
+            }
+
+            setUserGrade(currentGrade || '');
+
+            // Requirement: "if the representative role has not assigned with any grade, he couldn't see any concern"
+            if (!currentGrade || !currentGrade.toString().trim()) {
+                setComplaints([]);
+                calculateStats([]);
+                setLoading(false);
+                return;
+            }
+
+            const rawGrade = currentGrade.toString().trim();
+            const cleanGrade = rawGrade.replace(/^Grade\s*/i, '').trim();
+            const gradeMatches = Array.from(new Set([rawGrade, cleanGrade, `Grade ${cleanGrade}`]));
+
+            // Fetch concerns assigned to that grade only
             let query = supabase
                 .from('complaint')
                 .select('*')
+                .in('grade', gradeMatches)
                 .order('created_at', { ascending: false });
 
             const { data, error } = await query;
@@ -62,9 +121,17 @@ function RepresentativeDashboard() {
                 return;
             }
 
+            // JavaScript safeguard to strictly match the assigned grade
+            const gradeFilteredComplaints = (data || []).filter(complaint => {
+                if (!complaint.grade) return false;
+                const cGrade = complaint.grade.toString().trim();
+                const cClean = cGrade.replace(/^Grade\s*/i, '').trim();
+                return gradeMatches.includes(cGrade) || cClean.toLowerCase() === cleanGrade.toLowerCase();
+            });
+
             // Fetch user data for each complaint
             const complaintsWithUsers = await Promise.all(
-                (data || []).map(async (complaint) => {
+                gradeFilteredComplaints.map(async (complaint) => {
                     if (complaint.user_id) {
                         const { data: userData, error: userError } = await supabase
                             .from('appusers')
@@ -80,7 +147,7 @@ function RepresentativeDashboard() {
                 })
             );
 
-            console.log('complaintsWithUsers', complaintsWithUsers);
+            console.log('Representative complaintsWithUsers for grade', currentGrade, complaintsWithUsers);
 
             setComplaints(complaintsWithUsers);
             calculateStats(complaintsWithUsers);
@@ -473,7 +540,18 @@ function RepresentativeDashboard() {
             {/* Navigation Bar */}
             <nav className="navbar navbar-expand-lg navbar-dark bg-gradient">
                 <div className="container-fluid">
-                    <span className="navbar-brand mb-0 h1">🧑 Representative Dashboard</span>
+                    <div className="d-flex align-items-center flex-wrap gap-2">
+                        <span className="navbar-brand mb-0 h1">🧑 Representative Dashboard</span>
+                        {userGrade ? (
+                            <span className="badge bg-light text-primary px-3 py-2 fw-semibold fs-6 shadow-sm">
+                                🎓 {getGradeDisplay(userGrade)}
+                            </span>
+                        ) : (
+                            <span className="badge bg-warning text-dark px-3 py-2 fw-semibold fs-6 shadow-sm">
+                                ⚠️ No Grade Assigned
+                            </span>
+                        )}
+                    </div>
                     <div className="d-flex align-items-center gap-3">
                         <span className="text-white">Welcome, {name}</span>
                         <button onClick={handleLogout} className='btn btn-outline-light logout-btn'>
@@ -485,6 +563,19 @@ function RepresentativeDashboard() {
 
             {/* Main Content */}
             <div className="container-fluid py-4">
+                {/* Warning when representative has no assigned grade */}
+                {!userGrade && (
+                    <div className="alert alert-warning border-2 d-flex align-items-center gap-3 p-3 mb-4 shadow-sm" role="alert">
+                        <div className="fs-2">⚠️</div>
+                        <div>
+                            <h6 className="alert-heading fw-bold mb-1">No Grade Assigned to Your Account</h6>
+                            <p className="mb-0">
+                                As a Parent Representative, you can only view concerns for your assigned grade. Your account is currently not assigned to any grade, so no concerns are visible. Please contact the administrator to assign a grade.
+                            </p>
+                        </div>
+                    </div>
+                )}
+
                 {/* Statistics Cards */}
                 <div className="row g-4 mb-4">
                     <div className="col-md-6 col-lg-3">
@@ -543,50 +634,61 @@ function RepresentativeDashboard() {
                             </div>
                         </div>
                     </div>
-
-
-
                 </div>
 
                 {/* Filters and Search */}
                 <div className="card filter-card mb-4">
                     <div className="card-body">
-                        <div className="row align-items-center">
-                            <div className="col-lg-5 col-md-12 mb-3 mb-lg-0">
+                        <div className="row align-items-center g-2">
+                            <div className="col-lg-4 col-md-12 mb-2 mb-lg-0">
                                 <div className="btn-group w-100" role="group">
                                     <button
-                                        className={`btn w-100 ${filter === 'all' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        className={`btn ${filter === 'all' ? 'btn-primary' : 'btn-outline-primary'}`}
                                         onClick={() => setFilter('all')}
                                     >
                                         All
                                     </button>
                                     <button
-                                        className={`btn w-100 ${filter === 1 ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        className={`btn ${filter === 1 ? 'btn-primary' : 'btn-outline-primary'}`}
                                         onClick={() => setFilter(1)}
                                     >
                                         New
                                     </button>
                                     <button
-                                        className={`btn w-100 ${filter === 'open' ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        className={`btn ${filter === 'open' ? 'btn-primary' : 'btn-outline-primary'}`}
                                         onClick={() => setFilter('open')}
                                     >
                                         Open
                                     </button>
                                     <button
-                                        className={`btn w-100 ${(filter === 7 || filter === 'closed') ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        className={`btn ${(filter === 7 || filter === 'closed') ? 'btn-primary' : 'btn-outline-primary'}`}
                                         onClick={() => setFilter('closed')}
                                     >
                                         Closed
                                     </button>
                                     <button
-                                        className={`btn w-100 ${filter === 3 ? 'btn-primary' : 'btn-outline-primary'}`}
+                                        className={`btn ${filter === 3 ? 'btn-primary' : 'btn-outline-primary'}`}
                                         onClick={() => setFilter(3)}
                                     >
                                         Forwarded
                                     </button>
                                 </div>
                             </div>
-                            <div className="col-lg-2 col-md-4 mb-3 mb-lg-0">
+                            <div className="col-lg-2 col-md-4 mb-2 mb-lg-0">
+                                <select
+                                    className="form-select bg-light"
+                                    value={userGrade || ''}
+                                    disabled
+                                    title="Grade filter is automatically applied based on your representative role"
+                                >
+                                    {userGrade ? (
+                                        <option value={userGrade}>🎓 {getGradeDisplay(userGrade)} (Applied)</option>
+                                    ) : (
+                                        <option value="">⚠️ No Grade Assigned</option>
+                                    )}
+                                </select>
+                            </div>
+                            <div className="col-lg-2 col-md-4 mb-2 mb-lg-0">
                                 <select
                                     className="form-select"
                                     value={priorityFilter}
@@ -599,7 +701,7 @@ function RepresentativeDashboard() {
                                     <option value="urgent">Urgent</option>
                                 </select>
                             </div>
-                            <div className="col-lg-3 col-md-5 mb-3 mb-lg-0">
+                            <div className="col-lg-3 col-md-4 mb-2 mb-lg-0">
                                 <input
                                     type="text"
                                     className="form-control"
@@ -608,7 +710,7 @@ function RepresentativeDashboard() {
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
-                            <div className="col-lg-2 col-md-3">
+                            <div className="col-lg-1 col-md-12">
                                 <button className="btn btn-primary w-100" onClick={handleExport}>
                                     📊 Export
                                 </button>
@@ -623,8 +725,18 @@ function RepresentativeDashboard() {
                         <div className="complaints-list">
                             {filteredComplaints.length === 0 ? (
                                 <div className="card text-center p-5">
-                                    <h5>No concerns found</h5>
-                                    <p className="text-muted">Try adjusting your filters or search term</p>
+                                    {!userGrade ? (
+                                        <>
+                                            <div className="fs-1 mb-2">⚠️</div>
+                                            <h5>No Grade Assigned</h5>
+                                            <p className="text-muted">You have not been assigned to any grade. You cannot view concerns until a grade is assigned to your account.</p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <h5>No concerns found for {getGradeDisplay(userGrade)}</h5>
+                                            <p className="text-muted">Try adjusting your status/priority filters or search term</p>
+                                        </>
+                                    )}
                                 </div>
                             ) : (
                                 filteredComplaints.map((complaint) => {
@@ -657,6 +769,8 @@ function RepresentativeDashboard() {
                                                                 </div>
                                                                 <p className="complaint-meta mb-0">
                                                                     <strong>From:</strong> {complaint.user?.name || 'Unknown'} ({complaint.user?.email || 'N/A'})
+                                                                    <br />
+                                                                    <strong>Student:</strong> {complaint.student_name || 'N/A'} {complaint.grade ? `(${getGradeDisplay(complaint.grade)}${complaint.section ? ` - Sec ${complaint.section}` : ''})` : ''}
                                                                     <br />
                                                                     <strong>Submitted:</strong> {formatDate(complaint.created_at)}
                                                                 </p>
@@ -890,6 +1004,13 @@ function RepresentativeDashboard() {
                                     <div className="mb-3">
                                         <label className="form-label fw-bold">Student Number:</label>
                                         <p className="form-control-static">{selectedComplaint.student_no}</p>
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label fw-bold">Grade & Section:</label>
+                                        <p className="form-control-static">
+                                            {getGradeDisplay(selectedComplaint.grade)}
+                                            {selectedComplaint.section ? ` - Section ${selectedComplaint.section}` : ''}
+                                        </p>
                                     </div>
                                     <div className="mb-3">
                                         <label className="form-label fw-bold">Priority:</label>
