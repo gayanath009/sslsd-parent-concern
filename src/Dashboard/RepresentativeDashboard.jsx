@@ -804,7 +804,7 @@ function RepresentativeDashboard() {
                                                                     </button>
                                                                 )}
 
-                                                                {(complaint.stat_code === 1 || complaint.stat_code === 9) && (
+                                                                {(complaint.stat_code === 1 || complaint.stat_code === 2 || complaint.stat_code === 9) && (
                                                                     <button
                                                                         className="btn btn-sm text-white"
                                                                         onClick={(e) => {
